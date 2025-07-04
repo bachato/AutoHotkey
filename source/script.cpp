@@ -1030,7 +1030,7 @@ ResultType Script::AutoExecSection()
 	for (auto mod = mLastModule; mod; mod = mod->mPrev)
 	{
 		result = ExecuteModule(mod);
-		if (result != OK)
+		if (result != OK && result != EARLY_RETURN)
 			break;
 	}
 
