@@ -897,7 +897,7 @@ ResultType Object::GetTypedValue(ResultToken &aResultToken, int aFlags, TypedPro
 ResultType Object::SetTypedValue(ResultToken &aResultToken, int aFlags, name_t aName, TypedProperty &aProp, ExprTokenType &aValue)
 {
 	auto ptr = (void*)(DataPtr() + aProp.data_offset);
-	if (aProp.class_object)
+	if (aProp.class_object && mNested)
 	{
 		Object *nested = mNested[aProp.object_index];
 		mRefCount++; // Must be done at least when nested->mRefCount == 0 (and then reversed when nested->mRefCount reaches 0 again).
@@ -910,7 +910,7 @@ ResultType Object::SetTypedValue(ResultToken &aResultToken, int aFlags, name_t a
 			return result;
 		return aResultToken.Error(_T("Assignment to struct is not supported."));
 	}
-	if (aProp.item_count)
+	if (aProp.item_count || aProp.class_object)
 		return aResultToken.Error(ERR_PROPERTY_READONLY, aName);
 	return SetValueOfTypeAtPtr(aProp.type, ptr, aValue, aResultToken);
 }
