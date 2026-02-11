@@ -6765,8 +6765,9 @@ LPTSTR Script::FindLibraryFile(LPTSTR aFuncName, size_t aFuncNameLength, bool aI
 	// The legacy behaviour for #Include <A_B> is that all Libs are searched for A_B.ahk before
 	// searching for A.ahk, which means that A_B.ahk takes precedence over A.ahk even if A.ahk
 	// is defined in the local Lib and A_B.ahk is not.
-	if (auto first_underscore = _tcschr(aFuncName, '_'))
-		return FindLibraryFile(aFuncName, first_underscore - aFuncName);
+	for (i = 0; i < aFuncNameLength; ++i)
+		if (aFuncName[i] == '_')
+			return FindLibraryFile(aFuncName, i);
 	return nullptr;
 }
 
