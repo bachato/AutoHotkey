@@ -140,6 +140,8 @@ ResultType Script::ParseImportStatement(LPTSTR aBuf)
 	imp->mod_name = SimpleHeap::Alloc(mod_name, mod_name_end - mod_name);
 	if (var_name)
 		imp->var_name = SimpleHeap::Alloc(var_name, var_name_end - var_name);
+	else if (mod_name == aBuf) // `Import M...`, not `from M` or path.
+		imp->var_name = imp->mod_name;
 	if (import_file)
 		ConvertEscapeSequences(imp->mod_name);
 	imp->wildcard = import_wildcard;
