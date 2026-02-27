@@ -131,7 +131,7 @@ ResultType Script::ParseImportStatement(LPTSTR aBuf, bool aDirective)
 	else if (mod_name == aBuf) // `Import M`, not `Import {} from M` or `Import "file"`.
 	{
 		// Interpret `Import M` as a function call statement, as in v2.0.
-		if (!aDirective)
+		if (!aDirective && !is_export)
 			return CONDITION_FALSE;
 	}
 
