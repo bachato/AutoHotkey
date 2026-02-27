@@ -2201,7 +2201,8 @@ process_completed_line:
 		// Since above didn't "goto", it's not a label.
 		if (*buf == '#')
 		{
-			if (!_tcsnicmp(buf, _T("#HotIf"), 6) && IS_SPACE_OR_TAB(buf[6]))
+			if (!_tcsnicmp(buf, _T("#HotIf"), 6) && IS_SPACE_OR_TAB(buf[6])
+				|| !_tcsnicmp(buf, _T("#Import"), 7) && IS_SPACE_OR_TAB(buf[7]))
 			{
 				// Allow an expression enclosed in ()/[]/{} to span multiple lines:
 				if (!GetLineContExpr(fp, buf, next_buf, phys_line_number, has_continuation_section))
