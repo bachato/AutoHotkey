@@ -2393,7 +2393,7 @@ public:
 	ResultType ParseImportStatement(LPTSTR aBuf, bool aDirective = false);
 	ResultType CloseCurrentModule();
 	ScriptModule *OpenNewModule(LPCTSTR aName);
-	ResultType ResolveImports();
+	ResultType ResolveImports(ScriptModule *aTerminator = nullptr);
 	ResultType ResolveImports(ScriptImport &aImport);
 	Var *AddNewImportVar(LPTSTR aVarName, Var *aAliasFor, IObject *aModule, bool aExport);
 	Var *FindImportedVar(LPCTSTR aVarName);

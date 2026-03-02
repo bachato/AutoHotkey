@@ -223,9 +223,9 @@ Var *Script::AddNewImportVar(LPTSTR aVarName, Var *aAliasFor, IObject *aModule, 
 }
 
 
-ResultType Script::ResolveImports()
+ResultType Script::ResolveImports(ScriptModule *aTerminator)
 {
-	for (mCurrentModule = mLastModule; mCurrentModule; mCurrentModule = mCurrentModule->mPrev)
+	for (mCurrentModule = mLastModule; mCurrentModule != aTerminator; mCurrentModule = mCurrentModule->mPrev)
 	{
 		for (auto imp = mCurrentModule->mImports; imp; imp = imp->next)
 		{
@@ -260,17 +260,14 @@ ResultType Script::ResolveImports(ScriptImport &imp)
 		{
 			auto path = Line::sSourceFile[file_index];
 			auto cur_mod = mCurrentModule;
-			auto last_mod = mLastModule;
-			mLastModule = nullptr; // Start a new chain.
 			imp.mod = mCurrentModule = OpenNewModule(imp.mod_name);
 			imp.mod->mSelfFileIndex = file_index;
 			if (!LoadIncludedFile(path, false, false))
 				return FAIL;
 			if (!CloseCurrentModule())
 				return FAIL;
-			if (!ResolveImports()) // Resolve imports in all modules that were just included.
+			if (!ResolveImports(imp.mod->mPrev)) // Resolve imports in all modules that were just included.
 				return FAIL;
-			imp.mod->mPrev = last_mod; // Join to previous chain.
 			mCurrentModule = cur_mod;
 		}
 	}
