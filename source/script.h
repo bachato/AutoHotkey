@@ -2392,7 +2392,8 @@ public:
 	ResultType ParseModuleDirective(LPCTSTR aName);
 	ResultType ParseImportStatement(LPTSTR aBuf, bool aDirective = false);
 	ResultType CloseCurrentModule();
-	ScriptModule *OpenNewModule(LPCTSTR aName);
+	void ReopenModule(ScriptModule *aMod);
+	ScriptModule *CreateModule(LPCTSTR aName);
 	ResultType ResolveImports(ScriptModule *aTerminator = nullptr);
 	ResultType ResolveImports(ScriptImport &aImport, ScriptModule *aDirectiveList);
 	Var *AddNewImportVar(LPTSTR aVarName, Var *aAliasFor, IObject *aModule, bool aExport);

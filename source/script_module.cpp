@@ -44,7 +44,8 @@ ResultType Script::ParseModuleDirective(LPCTSTR aName)
 	auto mod = FindDirectiveModule(aName, mLastModule);
 	if (!mod)
 	{
-		mod = OpenNewModule(SimpleHeap::Alloc(aName));
+		mod = CreateModule(SimpleHeap::Alloc(aName));
+		mod->mOuterFileIndex = mCurrFileIndex;
 
 		// Let any previous #Warn settings carry over from the previous module, by default.
 		mod->Warn_LocalSameAsGlobal = mCurrentModule->Warn_LocalSameAsGlobal;
@@ -53,11 +54,7 @@ ResultType Script::ParseModuleDirective(LPCTSTR aName)
 	}
 	if (mod != mCurrentModule)
 	{
-		CloseCurrentModule();
-		mCurrentModule = mod;
-		mLastLine = mod->mLastLine; // Null unless we reopened an existing module.
-		if (mLastLine)
-			mPendingRelatedLine = mLastLine->mParentLine;
+		ReopenModule(mod);
 	}
 	return CONDITION_TRUE;
 }
@@ -276,7 +273,7 @@ ResultType Script::ResolveImports(ScriptImport &imp, ScriptModule *aDirectiveLis
 		{
 			auto path = Line::sSourceFile[file_index];
 			auto cur_mod = mCurrentModule;
-			imp.mod = mCurrentModule = OpenNewModule(imp.mod_name);
+			imp.mod = mCurrentModule = CreateModule(imp.mod_name);
 			imp.mod->mSelfFileIndex = file_index;
 			if (!LoadIncludedFile(path, false, false))
 				return FAIL;
@@ -363,7 +360,18 @@ ResultType Script::CloseCurrentModule()
 }
 
 
-ScriptModule *Script::OpenNewModule(LPCTSTR aName)
+void Script::ReopenModule(ScriptModule *aMod)
+{
+	ASSERT(mCurrentModule != aMod);
+	CloseCurrentModule();
+	mCurrentModule = aMod;
+	mLastLine = aMod->mLastLine; // Null unless we reopened an existing module.
+	if (mLastLine)
+		mPendingRelatedLine = mLastLine->mParentLine;
+}
+
+
+ScriptModule *Script::CreateModule(LPCTSTR aName)
 {
 	auto mod = new ScriptModule(aName);
 	mod->mPrev = mLastModule;
