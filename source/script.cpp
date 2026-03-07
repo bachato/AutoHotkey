@@ -589,6 +589,7 @@ ResultType Script::Init(LPTSTR aScriptFilename, IObject *aArgs)
 	// From this point, declarations should add names to a script module, not mBuiltinModule.
 	mCurrentModule = &mDefaultModule;
 	mDefaultModule.mPrev = &mBuiltinModule; // Probably only necessary for "#Module AHK" to work.
+	mDefaultModule.mSelfFileIndex = 0;
 
 	if (aArgs) // Caller-provided command-line args.
 	{

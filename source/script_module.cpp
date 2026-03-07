@@ -28,13 +28,19 @@ ResultType ScriptModule::Invoke(IObject_Invoke_PARAMS_DECL)
 
 ScriptModule *Script::FindDirectiveModule(LPCTSTR aName, ScriptModule *aList)
 {
-	for (auto mod = aList; mod && !mod->IsFileModule(); mod = mod->mPrev)
+	ScriptModule *mod;
+	for (mod = aList; mod && !mod->IsFileModule(); mod = mod->mPrev)
 		if (!_tcsicmp(aName, mod->mName))
 			return mod;
 	if (!_tcsicmp(aName, _T("AHK")))
 		return &mBuiltinModule;
-	if (!_tcsicmp(aName, _T("__Main")))
-		return &mDefaultModule;
+	if (*aName == '_')
+	{
+		if (!_tcsicmp(aName, _T("__Init")))
+			return mod;
+		if (!_tcsicmp(aName, _T("__Main")))
+			return &mDefaultModule;
+	}
 	return nullptr;
 }
 
