@@ -8422,11 +8422,9 @@ ResultType Line::ExpressionToPostfix(ArgStruct &aArg, ExprTokenType *&aInfix)
 						this_infix_item.symbol = SYM_BITXOR;
 					break;
 				case '~':
-					if (cp1 == '=' || cp1 == '!' && cp[2] == '=')
+					if (cp1 == '=')
 					{
 						++cp;
-						if (cp1 == '!')
-							++cp, ++allow_for_extra_postfix;
 						this_infix_item.callsite = new CallSite();
 						this_infix_item.callsite->func = ExprOp<Op_RegEx, 0>();
 						this_infix_item.callsite->param_count = 2;
@@ -8732,7 +8730,7 @@ unquoted_literal:
 				if (this_deref_ref.type == DT_QSTRING)
 				{
 					cp = omit_leading_whitespace(cp + 1);
-					if (*cp && _tcschr(_T("+-*&!"), *cp) && cp[1] != '=' && (cp[1] != '&' || *cp != '&'))
+					if (*cp && _tcschr(_T("+-*&~!"), *cp) && cp[1] != '=' && (cp[1] != '&' || *cp != '&') && cp[1] != '~')
 					{
 						// The symbol following this literal string is either a unary operator or a
 						// binary operator which can't (at least logically) be applied to a literal
@@ -9185,6 +9183,13 @@ unquoted_literal:
 				// !x  ; Supported even if X contains a negative number, since x is recognized as an isolated operand and not something containing unary minus.
 				//
 
+				if (infix_symbol == SYM_HIGHNOT && this_infix[1].symbol == SYM_REGEXMATCH) // v2.1: !~=
+				{
+					++this_infix;
+					infix_symbol = SYM_REGEXMATCH;
+					sym_next = this_infix[1].symbol;
+				}
+
 				// Perform some rough checks to detect most syntax errors.  This is done after the
 				// precedence check so that it isn't done multiple times for a single token when
 				// the stack contains one or more higher-precedence operators, and also so that
@@ -9453,12 +9458,8 @@ standard_pop_into_postfix: // Use of a goto slightly reduces code size.
 		case SYM_REGEXMATCH: // a ~= b  ->  RegExMatch(a, b)
 		{
 			this_postfix->symbol = SYM_FUNC;
-			if (this_postfix->error_reporting_marker[1] == '!')
-			{
-				auto not_op = (ExprTokenType *)_alloca(sizeof(ExprTokenType));
-				not_op->symbol = SYM_HIGHNOT;
-				postfix[++postfix_count] = not_op;
-			}
+			if ((this_postfix-1)->symbol == SYM_HIGHNOT) // !~=
+				postfix[++postfix_count] = this_postfix-1; // It was skipped before, so insert it straight into postfix.
 			break;
 		}
 
