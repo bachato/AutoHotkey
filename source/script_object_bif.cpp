@@ -217,6 +217,15 @@ BIF_DECL(BIF_HasProp)
 }
 
 
+BIF_DECL(BIF_DefineProp)
+{
+	IObject *iobj = TokenToObject(*aParam[0]);
+	if (!iobj || !iobj->IsOfType(Object::sPrototype))
+		_f_throw_param(0);
+	((Object *)iobj)->DefineProp(aResultToken, 1, 0, aParam + 1, aParamCount - 1);
+}
+
+
 BIF_DECL(BIF_Props)
 {
 	auto obj = ParamToObjectOrBase(*aParam[0]);

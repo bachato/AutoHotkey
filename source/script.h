@@ -2645,6 +2645,7 @@ BIF_DECL(BIF_StructFromPtr);
 BIF_DECL(BIF_Base);
 BIF_DECL(BIF_HasBase);
 BIF_DECL(BIF_HasProp);
+BIF_DECL(BIF_DefineProp);
 BIF_DECL(BIF_GetMethod);
 BIF_DECL(BIF_Props);
 

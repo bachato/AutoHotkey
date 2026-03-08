@@ -1763,7 +1763,7 @@ void Object::DefineProp(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 {
 	auto name = ParamIndexToString(0, _f_number_buf);
 	if (!*name)
-		_o_throw_param(0);
+		_o_throw_param(0 + aID);
 	ExprTokenType getter, setter, method, value;
 	getter.symbol = SYM_INVALID;
 	setter.symbol = SYM_INVALID;
@@ -1782,7 +1782,7 @@ void Object::DefineProp(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 			AddRef();
 			_o_return(this);
 		case FR_E_ARGS:
-			_o_throw_param(1);
+			_o_throw_param(1 + aID);
 		case FR_E_OUTOFMEM:
 			_o_throw_oom;
 		default:
@@ -1797,7 +1797,7 @@ void Object::DefineProp(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 		// To help prevent errors, throw if none of the above properties were present.  This also serves to
 		// reserve some cases for possible future use, such as passing a function object to imply {get:...}.
 		|| getter.symbol == SYM_INVALID && setter.symbol == SYM_INVALID && method.symbol == SYM_INVALID && value.symbol == SYM_INVALID)
-		_o_throw_param(1);
+		_o_throw_param(1 + aID);
 	if (value.symbol != SYM_INVALID) // Above already verified that neither Get nor Set was present.
 	{
 		if (!SetOwnProp(name, value))

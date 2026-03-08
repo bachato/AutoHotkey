@@ -53,6 +53,7 @@ FuncEntry g_BIF[] =
 	BIF1(ComObjType, 1, 2),
 	BIF1(ComObjValue, 1, 1),
 	BIF1(Cos, 1, 1),
+	BIF1(DefineProp, 3, 3),
 #ifdef ENABLE_DLLCALL
 	BIFn(DllCall, 1, NA, BIF_DllCall),
 #endif
