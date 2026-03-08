@@ -74,7 +74,7 @@ FuncEntry g_BIF[] =
 	BIFi(IsLower, 1, 2, BIF_IsTypeish, VAR_TYPE_LOWER),
 	BIFi(IsNumber, 1, 1, BIF_IsTypeish, VAR_TYPE_NUMBER),
 	BIF1(IsObject, 1, 1),
-	BIFi(IsSetRef, 1, 1, BIF_IsSet, 0, {1}),
+	BIFi(IsSetRef, 1, 1, BIF_IsSet, 1, {1}),
 	BIFi(IsSpace, 1, 1, BIF_IsTypeish, VAR_TYPE_SPACE),
 	BIFi(IsTime, 1, 1, BIF_IsTypeish, VAR_TYPE_TIME),
 	BIFi(IsUpper, 1, 2, BIF_IsTypeish, VAR_TYPE_UPPER),
@@ -8030,7 +8030,7 @@ ResultType Line::ExpressionToPostfix(ArgStruct &aArg, ExprTokenType *&aInfix)
 	// IsSet is constructed here because it's a sort of intrinsic function with its own
 	// special rules.  ExprOp<> isn't used because it doesn't have parameter count limits
 	// or a name (which is displayed when the parameter count is invalid, for instance).
-	static BuiltInFunc *sIsSetFunc = new BuiltInFunc { _T("IsSet"), BIF_IsSet, 1, 1 };
+	static BuiltInFunc *sIsSetFunc = new BuiltInFunc { _T("IsSet"), BIF_IsSet, 0, 1 };
 
 	ExprTokenType *infix = NULL;
 	int infix_size = 0, infix_count = 0, allow_for_extra_postfix = 0;
@@ -9438,7 +9438,8 @@ standard_pop_into_postfix: // Use of a goto slightly reduces code size.
 			}
 			else if ((this_postfix->callsite->flags & IT_BITMASK) == IT_CALL)
 			{
-				if (this_postfix->callsite->param_count == 1 && this_postfix->callsite->func == sIsSetFunc)
+				if (this_postfix->callsite->param_count == 1 && this_postfix->callsite->func == sIsSetFunc
+					&& !(this_postfix->callsite->flags & EIF_ISSET_UNSET))
 				{
 					auto &last_postfix = *postfix[postfix_count - 1];
 					if (last_postfix.symbol == SYM_VAR || last_postfix.symbol == SYM_DYNAMIC)
@@ -9455,7 +9456,8 @@ standard_pop_into_postfix: // Use of a goto slightly reduces code size.
 							break;
 						}
 					}
-					return LineError(_T("IsSet requires a variable."), FAIL, this_postfix->error_reporting_marker);
+					if (last_postfix.symbol != SYM_MISSING)
+						return LineError(_T("IsSet requires a variable or unset expression."), FAIL, this_postfix->error_reporting_marker);
 				}
 			}
 			break;
@@ -9536,7 +9538,12 @@ standard_pop_into_postfix: // Use of a goto slightly reduces code size.
 			if (IS_CPAREN_LIKE(infix_symbol) || infix_symbol == SYM_COMMA)
 			{
 				if (stack_symbol == SYM_FUNC && this_postfix < chain_end)
-					return LineError(_T("This unset expression requires a final \"?\" or \"??\"."), FAIL, this_postfix->error_reporting_marker);
+				{
+					if ((**stk).callsite->func == sIsSetFunc)
+						(**stk).callsite->flags |= EIF_ISSET_UNSET;
+					else
+						return LineError(_T("This unset expression requires a final \"?\" or \"??\"."), FAIL, this_postfix->error_reporting_marker);
+				}
 			}
 			else if (infix_symbol == SYM_OR_MAYBE || infix_symbol == SYM_MAYBE) // SYM_MAYBE is right-associative, so found in infix_symbol only due to parentheses; e.g. ((a?.b)?)
 			{

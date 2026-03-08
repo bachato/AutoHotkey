@@ -2247,9 +2247,9 @@ BIF_DECL(BIF_IsSet)
 	// var should always be non-null for IsSet due to load-time validation.
 	// IsSetRef requires the additional check since general validation permits
 	// objects which aren't VarRefs but could implement __value.
-	if (!var)
+	if (!var && _f_callee_id)
 		_f_throw_param(0, _T("VarRef"));
-	_f_return_b(!var->IsUninitializedNormalVar());
+	_f_return_b(!(var ? var->IsUninitializedNormalVar() : ParamIndexIsOmitted(0)));
 }
 
 
