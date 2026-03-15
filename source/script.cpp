@@ -9210,19 +9210,20 @@ unquoted_literal:
 				// !x  ; Supported even if X contains a negative number, since x is recognized as an isolated operand and not something containing unary minus.
 				//
 
+				sym_prev = this_infix > infix ? this_infix[-1].symbol : SYM_INVALID;
+
 				if (infix_symbol == SYM_HIGHNOT && this_infix[1].symbol == SYM_REGEXMATCH) // v2.1: !~=
 				{
 					++this_infix;
 					infix_symbol = SYM_REGEXMATCH;
-					sym_next = this_infix[1].symbol;
 				}
+				
+				sym_next = this_infix[1].symbol; // It will be SYM_INVALID if there are no more.
 
 				// Perform some rough checks to detect most syntax errors.  This is done after the
 				// precedence check so that it isn't done multiple times for a single token when
 				// the stack contains one or more higher-precedence operators, and also so that
 				// the left operand (if this is a binary operator) has been popped into postfix.
-				sym_prev = this_infix > infix ? this_infix[-1].symbol : SYM_INVALID;
-				sym_next = this_infix[1].symbol; // It will be SYM_INVALID if there are no more.
 				SymbolType sym_postfix = postfix_count ? postfix[postfix_count-1]->symbol : SYM_INVALID;
 				if (IS_ASSIGNMENT_OR_POST_OP(infix_symbol))
 				{
