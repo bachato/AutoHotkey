@@ -1026,7 +1026,7 @@ void Object::StructGet(ResultToken &aResultToken, int aID, int aFlags, ExprToken
 	switch (aID)
 	{
 	case M_Struct_Ptr: _o_return(DataPtr());
-	case M_Struct_Size: _o_return(DataSize());
+	case M_Struct_Size: _o_return(mBase->StructSize());
 	}
 }
 
