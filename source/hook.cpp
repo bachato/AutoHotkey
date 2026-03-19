@@ -967,7 +967,8 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			KeyEvent(KEYUP, VK_SHIFT);
 		}
 
-		if (this_toggle_key_can_be_toggled) // Always false if our caller is the mouse hook.
+		if (this_toggle_key_can_be_toggled // Always false if our caller is the mouse hook.
+			&& !this_key.hotkey_down_was_suppressed)
 		{
 			// It's done this way because CapsLock, for example, is a key users often
 			// press quickly while typing.  I suspect many users are like me in that
@@ -1720,25 +1721,6 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 	}
 
 	pKeyHistoryCurr->event_type = 'h'; // h = hook hotkey (not one registered with RegisterHotkey)
-
-	if (this_toggle_key_can_be_toggled && aKeyUp && this_key.used_as_prefix)
-	{
-		// In this case, since all the above conditions are true, the key-down
-		// event for this key-up (which fired a hotkey) would not have been
-		// suppressed.  Thus, we should toggle the state of the key back
-		// the what it was before the user pressed it (due to the policy that
-		// the natural function of a key should never take effect when that
-		// key is used as a hotkey suffix).  You could argue that instead
-		// of doing this, we should change *pForceToggle's value to make the
-		// key untoggleable whenever it's both a prefix and a naked
-		// (key-up triggered) suffix.  However, this isn't too much harder
-		// and has the added benefit of allowing the key to be toggled if
-		// a modifier is held down before it (e.g. alt-CapsLock would then
-		// be able to toggle the CapsLock key):
-		KEYEVENT_PHYS(KEYUP, aVK, aSC); // Mark it as physical for any other hook instances.
-		KeyEvent(KEYDOWNANDUP, aVK, aSC);
-		return SuppressThisKey;
-	}
 
 	if (aKeyUp)
 	{
