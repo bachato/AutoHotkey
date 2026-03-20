@@ -746,15 +746,6 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 				// key2 is both a prefix and a suffix, we want to leave key1 in effect as a prefix,
 				// rather than key2.  Hence, a null-check was added in the above if-stmt:
 				pPrefixKey = &this_key;
-				// It should be safe to init this because even if the current key is repeating,
-				// it should be impossible to receive here the key-downs that occurred after
-				// the first, because there's a return-on-repeat check farther above (update: that check
-				// is gone now).  Even if that check weren't done, it's safe to reinitialize this to zero
-				// because on most (all?) keyboards & OSs, the moment the user presses another key while
-				// this one is held down, the key-repeating ceases and does not resume for
-				// this key (though the second key will begin to repeat if it too is held down).
-				// In other words, the fear that this would be wrongly initialized and thus cause
-				// this prefix's suffix-action to fire upon key-release seems unfounded.
 				// It seems easier (and may perform better than alternative ways) to init this
 				// here rather than say, upon the release of the prefix key:
 				this_key.was_just_used = 0; // Init to indicate it hasn't yet been used in its role as a prefix.
