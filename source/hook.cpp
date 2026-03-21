@@ -973,24 +973,9 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			// don't reevaluate the conditions which were already evaluated on key-down.
 			return this_key.hotkey_down_was_suppressed ? SuppressThisKey : AllowKeyToGoToSystem;
 
-		// Since the above didn't return, this key is both a prefix and a suffix, but
-		// is currently operating in its capacity as a suffix.
-		// If this key wasn't thought to be down prior to this up-event, it's probably because
-		// it is registered with another prefix by RegisterHotkey().  In this case, the keyup
-		// should be passed back to the system rather than performing it's key-up suffix
-		// action.  UPDATE: This can't happen with a low-level hook.  But if there's another
-		// low-level hook installed that receives events before us, and it's not
-		// well-implemented (i.e. it sometimes sends ups without downs), this check
-		// may help prevent unexpected behavior.  UPDATE: The check "!this_key.used_as_key_up"
-		// is now done too so that an explicit key-up hotkey can operate even if the key wasn't
-		// thought to be down before. One thing this helps with is certain keyboards (e.g. some
-		// Dells) that generate only up events for some of their special keys but no down events,
-		// even when *no* keyboard management software is installed). Some keyboards also have
-		// scroll wheels that generate a stream of up events in one direction and down in the other.
-		if (!(was_down_before_up || this_key.used_as_key_up)) // Verified correct.
-			return AllowKeyToGoToSystem;
-		//else v1.0.37.05: Since no suffix action was triggered while it was held down, fall through
-		// rather than returning so that the key's own unmodified/naked suffix action will be considered.
+		// Since the above didn't return, this key is both a prefix and a suffix, and no
+		// other keys were pressed while this prefix was held down, so continue below to
+		// consider the key's own unmodified/naked suffix action.
 		// For example:
 		// a & b::
 		// a::   // This fires upon release of "a".
@@ -1258,10 +1243,12 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			hotkey_id_temp = hotkey_id_with_flags & HOTKEY_ID_MASK;
 			if (aKeyUp)
 			{
-				// The hotkey found above should fire if it's a prefix key and wasn't fired on key-down.
+				// The hotkey found above should fire if it's a prefix key and wasn't fired on key-down,
+				// unless it was used in a combination or this up event wasn't preceded by a down event.
 				bool fire_down_hotkey = this_key.used_as_prefix
 					&& this_key.was_just_used == 0
-					&& !down_performed_action;
+					&& !down_performed_action
+					&& was_down_before_up;
 				// Otherwise, check for a key-up hotkey to fire instead.
 				if (hotkey_id_temp < Hotkey::sHotkeyCount && hotkey_up[hotkey_id_temp] != HOTKEY_ID_INVALID) // Relies on short-circuit boolean order.
 				{
