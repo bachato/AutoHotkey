@@ -536,6 +536,8 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 
 	if (!aKeyUp) // Set defaults for this down event.
 	{
+		// This should be done even for key-repeat, otherwise it can cause a key to become
+		// stuck down if the repeat isn't also suppressed:
 		this_key.hotkey_down_was_suppressed = false;
 		// Don't do the following because key-repeat should not prevent a previously-selected
 		// key-up hotkey from executing (although it can still be overridden by selecting a
@@ -544,12 +546,6 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 		// key is released prior to key-repeat, or the key-up hotkey explicitly allows it
 		// (which would defeat the purpose of hotkey_to_fire_upon_release).
 		//this_key.hotkey_to_fire_upon_release = HOTKEY_ID_INVALID;
-		// Don't do the following because of the keyboard key-repeat feature.  In other words,
-		// the NO_SUPPRESS_NEXT_UP_EVENT should stay pending even in the face of consecutive
-		// down-events.  Even if it's possible for the flag to never be cleared due to never
-		// reaching any of the parts that clear it (which currently seems impossible), it seems
-		// inconsequential since by its very nature, this_key never consults the flag.
-		// this_key.no_suppress &= ~NO_SUPPRESS_NEXT_UP_EVENT;
 	}
 
 	if (aHook == g_MouseHook)
@@ -652,14 +648,6 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			// The line below is done even though the down-event also resets it in case it is ever
 			// possible for keys to generate multiple consecutive key-up events (faulty or unusual keyboards?)
 			this_key.hotkey_to_fire_upon_release = HOTKEY_ID_INVALID;
-		}
-		// v1.1.34.01: Use up the no-suppress ticket early for simplicity and maintainability.  Its value
-		// might not be used further below, but in any case the ticket shouldn't be applied to any event
-		// after this one.
-		if (this_key.no_suppress & NO_SUPPRESS_NEXT_UP_EVENT)
-		{
-			fire_with_no_suppress = true;
-			this_key.no_suppress &= ~NO_SUPPRESS_NEXT_UP_EVENT; // This ticket has been used up, so remove it.
 		}
 	}
 	this_key.is_down = !aKeyUp;
@@ -869,8 +857,6 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			// If our caller is the mouse hook, both of the following will always be false:
 			// this_key.as_modifiersLR
 			// this_toggle_key_can_be_toggled
-			if (!suppress_this_prefix) // Only for this condition. Not needed for toggle keys and not wanted for modifiers as it would prevent menu suppression.
-				this_key.no_suppress |= NO_SUPPRESS_NEXT_UP_EVENT;
 			// If a fire-on-release variant was identified, suppression should depend only on that variant.
 			if (firing_is_certain ? fire_with_no_suppress :
 				(this_key.as_modifiersLR || !suppress_this_prefix || this_toggle_key_can_be_toggled))
@@ -888,17 +874,12 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 	// This case just returns early if there's no chance of a key-up hotkey firing.
 	if (this_key.used_as_suffix && aKeyUp && !this_key.used_as_prefix) // Note: hotkey_id_with_flags might be already valid due to this_key.hotkey_to_fire_upon_release.
 	{
-		// If it did perform an action, suppress this key-up event.  Do this even
+		// If the last key-down was suppressed, suppress this key-up event.  Do this even
 		// if this key is a modifier because it's previous key-down would have
 		// already been suppressed (since this case is for suffixes that aren't
 		// also prefixes), thus the key-up can be safely suppressed as well.
 		// It's especially important to do this for keys whose up-events are
 		// special actions within the OS, such as AppsKey, Lwin, and Rwin.
-		// Toggleable keys are also suppressed here on key-up because their
-		// previous key-down event would have been suppressed in order for
-		// down_performed_action to be true.  UPDATE: Added handling for
-		// NO_SUPPRESS_NEXT_UP_EVENT and also applied this next part to both
-		// mouse and keyboard.
 		// v1.0.40.01: It was observed that a hotkey that consists of a mouse button as a prefix and
 		// a keyboard key as a suffix can cause sticking keys in rare cases.  For example, when
 		// "MButton & LShift" is a hotkey, if you hold down LShift long enough for it to begin
@@ -921,12 +902,9 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 		//    is a mouse key.  Although very selective, it doesn't mitigate the fact it might still do more
 		//    harm than good and/or break existing scripts.
 		// In light of the above, it seems best to keep this documented here as a known limitation for now.
-		//
-		// v1.0.28: The following check is done to support certain keyboards whose keys or scroll wheels
-		// generate up events without first having generated any down-event for the key.  UPDATE: I think
-		// this check is now also needed to allow fall-through in cases like "b" and "b up" both existing.
+
 		if (!this_key.used_as_key_up)
-			return (down_performed_action && !fire_with_no_suppress) ? SuppressThisKey : AllowKeyToGoToSystem;
+			return this_key.hotkey_down_was_suppressed ? SuppressThisKey : AllowKeyToGoToSystem;
 		//else continue checking to see if the right modifiers are down to trigger one of this
 		// suffix key's key-up hotkeys.
 	}
@@ -994,13 +972,7 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			// in its role as a suffix.
 			if (this_key.was_just_used > 0  // AS_PREFIX or AS_PREFIX_FOR_HOTKEY.  v1.1.34.02: Excludes AS_PASSTHROUGH_PREFIX, which would indicate the prefix key's suffix hotkey should always fire.
 				&& hotkey_id_with_flags == HOTKEY_ID_INVALID) // v1.0.44.04: Must check this because this prefix might be being used in its role as a suffix instead.  At this point id is only set if modifiers are held down.
-			{
-				if (!this_key.hotkey_down_was_suppressed
-					|| fire_with_no_suppress) // Can be true due to NO_SUPPRESS_NEXT_UP_EVENT.
-					return AllowKeyToGoToSystem; // Win/Alt will be disguised if needed.
-				// Otherwise:
-				return SuppressThisKey;
-			}
+				return this_key.hotkey_down_was_suppressed ? SuppressThisKey : AllowKeyToGoToSystem;
 
 		// Since above didn't return, this key-up for this prefix key wasn't used in it's role
 		// as a prefix.  If it's not a suffix, we're done, so just return.  Don't do
@@ -1407,13 +1379,8 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 			, aExtraInfo // May affect the result due to #InputLevel.  Assume the key-up's SendLevel will be the same as the key-down.
 			, fire_with_no_suppress, NULL); // fire_with_no_suppress is the value we really need to get back from it.
 		if (!firing_is_certain || fire_with_no_suppress)
-		{
-			// If the conditions change and allow the key-up hotkey to fire, make sure not to suppress it.
-			this_key.no_suppress |= NO_SUPPRESS_NEXT_UP_EVENT;
 			return AllowKeyToGoToSystem;
-		}
 		// Both this down event and the corresponding up event should be suppressed.
-		ASSERT(!(this_key.no_suppress & NO_SUPPRESS_NEXT_UP_EVENT));
 		this_key.hotkey_down_was_suppressed = true;
 		return SuppressThisKey;
 	}
@@ -1727,23 +1694,8 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 		this_key.down_performed_action = true;
 
 		if (fire_with_no_suppress)
-		{
-			// Since this hotkey is firing on key-down but the user specified not to suppress its native
-			// function, substitute an DOWN+UP pair of events for this event, since we want the
-			// DOWN to precede the UP.  It's necessary to send the UP because the user's physical UP
-			// will be suppressed automatically when this function is called for that event.
-			// UPDATE: The below method causes side-effects due to the fact that it is simulated
-			// input vs. physical input, e.g. when used with the Input command, which distinguishes
-			// between "ignored" and physical input.  Therefore, let this down event pass through
-			// and set things up so that the corresponding up-event is also not suppressed:
-			//KeyEvent(KEYDOWNANDUP, aVK, aSC);
-			// No longer relevant due to the above change:
-			// Now let it just fall through to suppress this down event, because we can't use it
-			// since doing so would result in the UP event having preceded the DOWN, which would
-			// be the wrong order.
-			this_key.no_suppress |= NO_SUPPRESS_NEXT_UP_EVENT;
 			return AllowKeyToGoToSystem;
-		}
+
 		// Fix for v1.1.37.02 and v2.0.6: The following is also done for LWin/RWin because otherwise,
 		// the system does not generate WM_SYSKEYDOWN (or even WM_KEYDOWN) messages for combinations
 		// that correspond to some global hotkeys, even though they aren't actually triggering global
@@ -1760,7 +1712,7 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 		//     consider the key to be held down.  For example, pressing Ctrl+Alt should produce WM_KEYDOWN,
 		//     but if the system thinks Ctrl has been released, it will instead produce WM_SYSKEYDOWN.
 		//     This was confirmed necessary for LCtrl::Alt and LAlt::LCtrl to work correctly on Windows 7.
-		else if (this_key.as_modifiersLR & ~g_modifiersLR_logical)
+		if (this_key.as_modifiersLR & ~g_modifiersLR_logical)
 		{
 			// Fix for v1.1.26.01: Added KEY_BLOCK_THIS to suppress the Alt key-up, which fixes an issue
 			// which could be reproduced as follows:
