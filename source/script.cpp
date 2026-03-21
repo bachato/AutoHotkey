@@ -2925,7 +2925,7 @@ ResultType Script::BalanceExprError(int aBalance, TCHAR aExpect[], LPTSTR aLineT
 ResultType Script::GetLineContinuation(TextStream *fp, LineBuffer &buf, LineBuffer &next_buf
 	, LineNumberType &phys_line_number, bool &has_continuation_section)
 {
-	bool do_rtrim, literal_escapes, literal_quotes;
+	bool do_rtrim, literal_escapes = false, literal_quotes;
 	#define CONTINUATION_SECTION_WITHOUT_COMMENTS 1 // MUST BE 1 because it's the default set by anything that's boolean-true.
 	#define CONTINUATION_SECTION_WITH_COMMENTS    2 // Zero means "not in a continuation section".
 	int in_continuation_section, indent_level;
@@ -2948,7 +2948,7 @@ ResultType Script::GetLineContinuation(TextStream *fp, LineBuffer &buf, LineBuff
 	{
 		// This increment relies on the fact that this loop always has at least one iteration:
 		++phys_line_number; // Tracks phys. line number in *this* file (independent of any recursion caused by #Include).
-		next_buf_length = GetLine(next_buf, in_continuation_section, in_comment_section, fp);
+		next_buf_length = GetLine(next_buf, in_continuation_section, literal_escapes, in_comment_section, fp);
 		if (!in_continuation_section)
 		{
 			// v2: The comment-end is allowed at the end of the line (vs. just the start) to reduce
@@ -3289,7 +3289,7 @@ ResultType Script::GetLineContinuation(TextStream *fp, LineBuffer &buf, LineBuff
 
 
 
-size_t Script::GetLine(LineBuffer &aBuf, int aInContinuationSection, bool aInBlockComment, TextStream *ts)
+size_t Script::GetLine(LineBuffer &aBuf, int aInContinuationSection, bool aLiteralEscape, bool aInBlockComment, TextStream *ts)
 {
 	size_t aBuf_length = 0;
 	for (;;)
@@ -3396,7 +3396,7 @@ size_t Script::GetLine(LineBuffer &aBuf, int aInContinuationSection, bool aInBlo
 			aBuf_length = rtrim_with_nbsp(aBuf, prevp - aBuf); // Since it's our responsibility to return a fully trimmed string.
 			break; // Once the first valid comment-flag is found, nothing after it can matter.
 		}
-		else // No whitespace to the left.
+		else if (!aLiteralEscape)
 		{
 			// The following is done here, at this early stage, to support escaping the comment flag in
 			// hotkeys and directives (the latter is mostly for backward-compatibility).
