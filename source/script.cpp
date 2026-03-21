@@ -1731,7 +1731,6 @@ ResultType Script::LoadIncludedFile(TextStream *fp, int aFileIndex)
 	// File is now open, read lines from it.
 
 	bool has_continuation_section;
-	TCHAR orig_char;
 
 	LPTSTR hotkey_flag, cp, cp1, hotstring_start, hotstring_options;
 	Hotkey *hk;
@@ -1900,10 +1899,9 @@ process_completed_line:
 				// to contain a double-colon somewhere.  This avoids the need to escape double colons in scripts.
 				// Note: Hotstrings can't suffer from this type of ambiguity because a leading colon or pair of
 				// colons makes them easier to detect.
-				cp = omit_trailing_whitespace(buf, hotkey_flag); // For maintainability.
-				orig_char = *cp;
+				cp = hotkey_flag;
 				*cp = '\0'; // Temporarily terminate.
-				hotkey_validity = Hotkey::TextInterpret(omit_leading_whitespace(buf), NULL); // Passing NULL calls it in validate-only mode.
+				hotkey_validity = Hotkey::TextInterpret(buf, NULL); // Passing NULL calls it in validate-only mode.
 				switch (hotkey_validity)
 				{
 				case FAIL:
@@ -1924,7 +1922,7 @@ process_completed_line:
 						MsgBox(msg_text);
 					}
 				}
-				*cp = orig_char; // Undo the temp. termination above.
+				*cp = *HOTKEY_FLAG; // Undo the temp. termination above.
 			}
 		}
 
