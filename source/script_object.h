@@ -269,6 +269,7 @@ struct TypedProperty
 
 struct DYNAPARM;
 class Array;
+class Map;
 
 class Object : public ObjectBase
 {
@@ -327,7 +328,9 @@ protected:
 		size_t size;
 		size_t align;
 		size_t nested_count;
+		size_t item_count; // Separate from nested_count for simplicity maintainability (since arrays of numbers have no nested objects).
 		Object *pointed_class;
+		Map *array_class_map;
 		MdType native_type;
 		UCHAR dllcall_type;
 		bool is_unsigned;
@@ -410,6 +413,7 @@ protected:
 	ResultType NestedNew(ResultToken &aResultToken, StructInfo *si);
 	ResultType NestedSparseInit(ResultToken& aResultToken);
 	ResultType NestedSparseInit(ResultToken& aResultToken, TypedProperty& aProp, UINT_PTR aPtr);
+	ResultType CArrayNew(ResultToken &aResultToken, StructInfo *si);
 
 public:
 
@@ -540,6 +544,7 @@ public:
 	void DefineClass(name_t aName, Object *aClass, bool aIsStructPtrClass = false);
 	
 	static void CreatePtrClass(LPTSTR aClassName, Object *aClass, StructInfo *aNative = nullptr);
+	static void CreateCArrayClass(ResultToken &aResultToken, ExprTokenType &aOfClass, size_t aCount);
 
 	bool CanSetBase(Object *aNewBase);
 	ResultType SetBase(Object *aNewBase, ResultToken &aResultToken);
@@ -578,8 +583,8 @@ public:
 	static Object *sPrototype, *sClass, *sClassPrototype;
 	static IObject *sObjectCall;
 	
-	static ObjectMember sStructMembers[];
-	static Object *sStructClass, *sStructPrototype, *sPtrClass, *sPtrPrototype;
+	static ObjectMember sStructMembers[], sCArrayMembers[];
+	static Object *sStructClass, *sStructPrototype, *sPtrClass, *sPtrPrototype, *sCArrayClass, *sCArrayPrototype;
 
 	static void CreateRootPrototypes();
 	static Object *CreateClass(Object *aPrototype, Object *aBase = Object::sClassPrototype);
@@ -623,9 +628,10 @@ public:
 	void Error__New(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount);
 	void Error_Show(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount);
 
-	enum { M_Struct_Ptr, M_Struct_Size };
+	enum { M_Struct_Ptr, M_Struct_Size, M_CArray_Length };
 	void StructGet(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount);
 	void StructPtrInvoke(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount);
+	void CArrayItem(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount);
 
 	// For pseudo-objects:
 	static Object *sAnyPrototype, *sPrimitivePrototype, *sStringPrototype

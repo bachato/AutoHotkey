@@ -2644,6 +2644,7 @@ BIF_DECL(BIF_ObjXXX);
 
 BIF_DECL(NewStruct);
 BIF_DECL(Struct_At);
+BIF_DECL(Struct_Item);
 
 BIF_DECL(BIF_Base);
 BIF_DECL(BIF_HasBase);
