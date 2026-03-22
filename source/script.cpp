@@ -6711,11 +6711,16 @@ Object *Script::FindClass(LPCTSTR aClassName, size_t aClassNameLength)
 
 bool Script::ResolveBaseClass(LPCTSTR aClassName, bool aStruct, Object *&aClass, Object *&aProto)
 {
-	aClass = FindClass(aClassName);
-	aProto = aClass ? (Object*)aClass->GetOwnPropObj(_T("Prototype")) : nullptr;
-	return aProto
-		&& aStruct == (aProto->IsDerivedFrom(Object::sStructPrototype)
-					|| aProto == Object::sStructPrototype);
+	auto c = FindClass(aClassName);
+	auto p = c ? (Object*)c->GetOwnPropObj(_T("Prototype")) : nullptr;
+	if (p && aStruct == (p->IsDerivedFrom(Object::sStructPrototype) || p == Object::sStructPrototype))
+	{
+		aClass = c;
+		aProto = p;
+		return true;
+	}
+	aClass = aProto = nullptr;
+	return false;
 }
 
 
