@@ -587,6 +587,7 @@ public:
 	
 	static ObjectMember sStructMembers[], sCArrayMembers[];
 	static Object *sStructClass, *sStructPrototype, *sPtrClass, *sPtrPrototype, *sCArrayClass, *sCArrayPrototype;
+	static Object *sPrimitiveClass[(int)MdType::LastSupportedPropertyType];
 
 	static void CreateRootPrototypes();
 	static Object *CreateClass(Object *aPrototype, Object *aBase = Object::sClassPrototype);

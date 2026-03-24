@@ -17,8 +17,9 @@ enum class MdType : UINT8
 	UInt32		= 6,
 	Int64		= 7,
 	UInt64		= 8,
-	Float64		= 9,
-	Float32		= 10,
+	IntPtr		= 9,
+	Float64		= 10,
+	Float32		= 11,
 	String,
 	Object,
 	Variant, // Currently only for input (ExprTokenType) or retval (ResultToken).
@@ -46,7 +47,7 @@ enum class MdType : UINT8
 	FirstModifier = Optional,
 	BitsUpperBound = Optional,
 	UIntPtr = Exp32or64(UInt32, UInt64),
-	IntPtr = Exp32or64(Int32, Int64)
+	LastSupportedPropertyType = Float32
 };
 
 #define MDTYPE_NAMES nullptr, _T("i8"), _T("u8"), _T("i16"), _T("u16"), _T("i32"), _T("u32"), _T("i64"), _T("u64"), _T("f64"), _T("f32")
@@ -78,6 +79,7 @@ template<> struct md_argtype<MdType::Float32> { typedef float t; };
 template<> struct md_argtype<MdType::Float64> { typedef double t; };
 template<> struct md_argtype<MdType::Int64> { typedef __int64 t; };
 template<> struct md_argtype<MdType::UInt64> { typedef UINT64 t; };
+template<> struct md_argtype<MdType::IntPtr> { typedef INT_PTR t; };
 template<> struct md_argtype<MdType::String> { typedef StrArg t; };
 template<> struct md_argtype<MdType::Object> { typedef IObject *t; };
 template<> struct md_argtype<MdType::Void> { typedef void t; };
@@ -104,6 +106,7 @@ template<> struct md_retval<MdType::Int32> { typedef int t; };
 template<> struct md_retval<MdType::UInt32> { typedef UINT t; };
 template<> struct md_retval<MdType::Int64> { typedef __int64 t; };
 template<> struct md_retval<MdType::UInt64> { typedef UINT64 t; };
+template<> struct md_retval<MdType::IntPtr> { typedef INT_PTR t; };
 template<> struct md_retval<MdType::Bool32> { typedef BOOL t; };
 
 template<> struct md_retval<MdType::FResult> { typedef FResult t; };

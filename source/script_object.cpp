@@ -2204,7 +2204,7 @@ void Object::GetOwnPropDesc(ResultToken &aResultToken, int aID, int aFlags, Expr
 		if (field->tprop->class_object)
 			desc->SetOwnProp(_T("Type"), field->tprop->class_object);
 		else if (field->tprop->type != MdType::Void)
-			desc->SetOwnProp(_T("Type"), TypeName(field->tprop->type));
+			desc->SetOwnProp(_T("Type"), sPrimitiveClass[(int)field->tprop->type-1]);
 		else
 			desc->SetOwnProp(_T("Type"), (__int64)field->tprop->item_count);
 		desc->SetOwnProp(_T("Offset"), field->tprop->data_offset);
@@ -4249,7 +4249,7 @@ void Object::CreateRootPrototypes()
 	sCArrayPrototype->mFlags &= ~NativeClassPrototype;
 	sStructClass->DefineClass(_T("Array"), sCArrayClass, true);
 
-	LPTSTR const type_names[]{ _T("Float32"), _T("Float64"), _T("Int16"), _T("Int32"), _T("Int64"), _T("Int8"), _T("IntPtr"), _T("UInt16"), _T("UInt32"), _T("UInt8")};
+	LPTSTR const type_names[]{ _T("Float32"), _T("Float64"), _T("Int16"), _T("Int32"), _T("Int64"), _T("Int8"), _T("IntPtr"), _T("UInt16"), _T("UInt32"), _T("UInt8") };
 	MdType const type_codes[]{ MdType::Float32, MdType::Float64, MdType::Int16, MdType::Int32, MdType::Int64, MdType::Int8, MdType::IntPtr, MdType::UInt16, MdType::UInt32, MdType::UInt8 };
 	UCHAR const type_dllcall[]{ DLL_ARG_FLOAT, DLL_ARG_DOUBLE, DLL_ARG_SHORT, DLL_ARG_INT, DLL_ARG_INT64, DLL_ARG_CHAR, Exp32or64(DLL_ARG_INT,DLL_ARG_INT64), DLL_ARG_SHORT, DLL_ARG_INT, DLL_ARG_CHAR};
 	for (int i = 0; i < _countof(type_names); ++i)
@@ -4269,6 +4269,7 @@ void Object::CreateRootPrototypes()
 		tp->data_offset = 0;
 		auto c = CreateClass(type_names[i], sStructClass, p, nullptr);
 		CreatePtrClass(c, p, si);
+		sPrimitiveClass[(int)type_codes[i] - 1] = c;
 	}
 
 	GuiControlType::DefineControlClasses();
@@ -4291,6 +4292,7 @@ Object *Map::sPrototype;
 
 Object *Object::sClass;
 Object *Object::sStructClass, *Object::sPtrClass, *Object::sCArrayClass;
+Object *Object::sPrimitiveClass[(int)MdType::LastSupportedPropertyType];
 
 Object *Closure::sPrototype;
 Object *BoundFunc::sPrototype;
