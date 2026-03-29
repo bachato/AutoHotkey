@@ -421,7 +421,7 @@ public:
 	static Object *Create();
 	static Object *Create(ExprTokenType *aParam[], int aParamCount, ResultToken *apResultToken = nullptr);
 	static Object *CreateStruct();
-	static Object *CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken);
+	static Object *CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken, bool aCopy = false);
 	
 	static ResultType ApplyParams(ResultToken &aThisResultToken, int aFlags, ExprTokenType *aParam[], int aParamCount);
 
@@ -617,6 +617,7 @@ public:
 	UINT_PTR LockStructSize() { auto si = GetStructInfo(); return si ? si->size : 0; }
 	
 	bool GetStructArgInfo(DYNAPARM &aType, Object *&aPointedClass);
+	MdType GetStructMdType() { return (mFlags & DataIsStructInfo) && !((StructInfo*)mData)->item_count ? ((StructInfo*)mData)->native_type : MdType::Void; }
 
 	// Methods and functions:
 	void DeleteProp(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount);

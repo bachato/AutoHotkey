@@ -128,7 +128,7 @@ Object *Object::CreateStruct()
 	return obj;
 }
 
-Object *Object::CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken)
+Object *Object::CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken, bool aCopy)
 {
 	Object *obj = new Object();
 	obj->mFlags |= CannotOwnProps | NoCallDelete;
@@ -138,7 +138,18 @@ Object *Object::CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResu
 		obj->Release();
 		return nullptr;
 	}
-	obj->SetDataPtr(aPtr);
+	if (aCopy)
+	{
+		auto size = obj->StructSize();
+		if (obj->AllocDataPtr(size) != OK)
+		{
+			obj->Release();
+			return nullptr;
+		}
+		memcpy((void*)obj->DataPtr(), (void*)aPtr, size);
+	}
+	else
+		obj->SetDataPtr(aPtr);
 	return obj;
 }
 
