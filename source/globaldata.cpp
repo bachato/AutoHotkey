@@ -132,6 +132,7 @@ static int GetScreenDPI()
 
 int g_ScreenDPI = GetScreenDPI();
 MenuTypeType g_MenuIsVisible = MENU_TYPE_NONE;
+bool g_MsgBoxTimedOut[MAX_MSGBOXES];
 int g_nMessageBoxes = 0;
 int g_nFileDialogs = 0;
 int g_nFolderDialogs = 0;

@@ -1003,10 +1003,9 @@ int MsgBox(LPCTSTR aText, UINT uType, LPCTSTR aTitle, double aTimeout, HWND aOwn
 	// a negative to be part of the text param.  But if it does happen, timeout after a short time,
 	// which may signal the user that the script passed a bad parameter.
 
-	// v1.0.33: The following is a workaround for the fact that an MsgBox with only an OK button
+	// The following is a workaround for the fact that a MsgBox with only an OK button
 	// doesn't obey EndDialog()'s parameter:
-	g->DialogHWND = NULL;
-	g->MsgBoxTimedOut = false;
+	g_MsgBoxTimedOut[g_nMessageBoxes] = false;
 
 	// At this point, we know a dialog will be displayed.  See macro's comments for details:
 	DIALOG_PREP // Must be done prior to POST_AHK_DIALOG() below.
@@ -1043,7 +1042,7 @@ int MsgBox(LPCTSTR aText, UINT uType, LPCTSTR aTitle, double aTimeout, HWND aOwn
 	// and why the behavior varies:
 	// Unfortunately, it appears that MessageBox() will return zero rather
 	// than AHK_TIMEOUT that was specified in EndDialog() at least under WinXP.
-	if (g->MsgBoxTimedOut || (!result && aTimeout > 0)) // v1.0.33: Added g->MsgBoxTimedOut, see comment higher above.
+	if (g_MsgBoxTimedOut[g_nMessageBoxes] || (!result && aTimeout > 0))
 		// Assume it timed out rather than failed, since failure should be VERY rare.
 		result = AHK_TIMEOUT;
 	// else let the caller handle the display of the error message because only it knows
