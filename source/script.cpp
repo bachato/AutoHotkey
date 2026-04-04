@@ -12558,6 +12558,8 @@ ResultType Script::PreparseVarRefs()
 {
 	for (mCurrentModule = mLastModule; mCurrentModule; mCurrentModule = mCurrentModule->mPrev)
 	{
+		ResolveIndirectImports();
+
 		if (!PreparseVarRefs(mCurrentModule->mFirstLine))
 			return FAIL;
 
