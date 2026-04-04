@@ -16,7 +16,16 @@ ResultType ScriptModule::Invoke(IObject_Invoke_PARAMS_DECL)
 		return var->Assign(*aParam[0]);
 
 	if (var->IsUninitialized())
-		return g_script.VarUnsetError(var);
+	{
+		if (var->CanSelfInitialize()) // Uninitialized class or import.
+		{
+			auto result = var->SelfInitialize();
+			if (result == FAIL || result == EARLY_EXIT)
+				return result;
+		}
+		if (var->IsUninitialized())
+			return g_script.VarUnsetError(var);
+	}
 
 	var->Get(aResultToken);
 	if (aResultToken.Exited() || aParamCount == 0 && IS_INVOKE_GET)
