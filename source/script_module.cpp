@@ -18,6 +18,9 @@ ResultType ScriptModule::Invoke(IObject_Invoke_PARAMS_DECL)
 	if (IS_INVOKE_SET && aParamCount == 1)
 		return var->Assign(*aParam[0]);
 
+	if (var->IsUninitialized())
+		return g_script.VarUnsetError(var);
+
 	var->Get(aResultToken);
 	if (aResultToken.Exited() || aParamCount == 0 && IS_INVOKE_GET)
 		return aResultToken.Result();
