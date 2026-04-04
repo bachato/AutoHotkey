@@ -4661,7 +4661,7 @@ ResultType Script::ParseAndAddLine(LPTSTR aLineText, ActionTypeType aActionType)
 		{
 		case ACT_STATIC: declare_type = VAR_DECLARE_STATIC; break;
 		case ACT_LOCAL: declare_type = VAR_DECLARE_LOCAL; break;
-		case ACT_EXPORT: declare_type = VAR_GLOBAL | VAR_EXPORTED; break;
+		case ACT_EXPORT: declare_type = VAR_DECLARE_GLOBAL | VAR_EXPORTED; break;
 		default: declare_type = VAR_DECLARE_GLOBAL; break;
 		}
 
@@ -4744,15 +4744,16 @@ ResultType Script::ParseAndAddLine(LPTSTR aLineText, ActionTypeType aActionType)
 				//  - Declaring a built-in variable as local or static.
 				// But permit the following:
 				//  - Exact duplicate declarations, such as for two different code paths.
-				if (var->Scope() != declare_type)
+				//  - Declarations which differ only by the presence of "Export".
+				if ((var->Scope() & ~VAR_EXPORTED) != (declare_type & ~VAR_EXPORTED))
 					return ConflictingDeclarationError(Var::DeclarationType(declare_type), var);
 			}
 			else
 			{
 				var = global_var;
-				if (declare_type & VAR_EXPORTED)
-					var->Scope() |= VAR_EXPORTED; // Mightn't be set if var was already defined.
 			}
+			if (declare_type & VAR_EXPORTED)
+				var->Scope() |= VAR_EXPORTED; // Mightn't be set if var was already defined.
 
 			item_end = omit_leading_whitespace(item_end); // Move up to the next comma, assignment-op, or '\0'.
 			if (*item_end && *item_end != ',')
