@@ -724,10 +724,13 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 		// introduce a new hotkey modifier such as an "up2" keyword that makes any key into a prefix
 		// key even if it never acts as a prefix for other keys, which in turn has the benefit of firing
 		// on key-up, but only if the no other key was pressed while the user was holding it down.
+		// v2.0.23: Check for PREFIX_FORCED independently of has_enabled_suffixes, which should be false
+		// for neutral modifiers so that e.g. Alt & Esc:: won't affect how LAlt:: behaves (suffixes don't
+		// need to be checked for Alt because Alt:: always fires on release).
 		bool suppress_this_prefix = !(this_key.no_suppress & AT_LEAST_ONE_COMBO_HAS_TILDE); // Set default.
-		bool has_enabled_suffixes = (this_key.used_as_prefix == PREFIX_ACTUAL)
+		bool has_enabled_suffixes = (this_key.used_as_prefix & PREFIX_ACTUAL)
 			&& Hotkey::PrefixHasEnabledSuffixes(sc_takes_precedence ? aSC : aVK, sc_takes_precedence, suppress_this_prefix);
-		if (has_enabled_suffixes)
+		if (has_enabled_suffixes || (this_key.used_as_prefix & PREFIX_FORCED))
 		{
 			// This check is necessary in cases such as the following, in which the "A" key continues
 			// to repeat because pressing a mouse button (unlike pressing a keyboard key) does not
@@ -860,7 +863,7 @@ LRESULT LowLevelCommon(const HHOOK aHook, int aCode, WPARAM wParam, LPARAM lPara
 
 		if (hotkey_id_with_flags == HOTKEY_ID_INVALID)
 		{
-			if (!has_enabled_suffixes && this_key.used_as_prefix == PREFIX_ACTUAL)
+			if (!has_enabled_suffixes && (this_key.used_as_prefix & PREFIX_ACTUAL))
 				pKeyHistoryCurr->event_type = _T('#'); // '#' to indicate this prefix key is disabled due to #HotIf WinActive/Exist criterion.
 			// In this case, a key-down event can't trigger a suffix, so return immediately.
 			// If our caller is the mouse hook, both of the following will always be false:
@@ -3166,38 +3169,38 @@ void SetModifierAsPrefix(vk_type aVK, sc_type aSC, bool aAlwaysSetAsPrefix = fal
 			switch (aVK)
 			{
 			case VK_MENU:
-				kvk[VK_MENU].used_as_prefix = PREFIX_FORCED;
-				kvk[VK_LMENU].used_as_prefix = PREFIX_FORCED;
-				kvk[VK_RMENU].used_as_prefix = PREFIX_FORCED;
-				ksc[SC_LALT].used_as_prefix = PREFIX_FORCED;
-				ksc[SC_RALT].used_as_prefix = PREFIX_FORCED;
+				kvk[VK_MENU].used_as_prefix |= PREFIX_FORCED;
+				kvk[VK_LMENU].used_as_prefix |= PREFIX_FORCED;
+				kvk[VK_RMENU].used_as_prefix |= PREFIX_FORCED;
+				ksc[SC_LALT].used_as_prefix |= PREFIX_FORCED;
+				ksc[SC_RALT].used_as_prefix |= PREFIX_FORCED;
 				break;
 			case VK_SHIFT:
-				kvk[VK_SHIFT].used_as_prefix = PREFIX_FORCED;
-				kvk[VK_LSHIFT].used_as_prefix = PREFIX_FORCED;
-				kvk[VK_RSHIFT].used_as_prefix = PREFIX_FORCED;
-				ksc[SC_LSHIFT].used_as_prefix = PREFIX_FORCED;
-				ksc[SC_RSHIFT].used_as_prefix = PREFIX_FORCED;
+				kvk[VK_SHIFT].used_as_prefix |= PREFIX_FORCED;
+				kvk[VK_LSHIFT].used_as_prefix |= PREFIX_FORCED;
+				kvk[VK_RSHIFT].used_as_prefix |= PREFIX_FORCED;
+				ksc[SC_LSHIFT].used_as_prefix |= PREFIX_FORCED;
+				ksc[SC_RSHIFT].used_as_prefix |= PREFIX_FORCED;
 				break;
 			case VK_CONTROL:
-				kvk[VK_CONTROL].used_as_prefix = PREFIX_FORCED;
-				kvk[VK_LCONTROL].used_as_prefix = PREFIX_FORCED;
-				kvk[VK_RCONTROL].used_as_prefix = PREFIX_FORCED;
-				ksc[SC_LCONTROL].used_as_prefix = PREFIX_FORCED;
-				ksc[SC_RCONTROL].used_as_prefix = PREFIX_FORCED;
+				kvk[VK_CONTROL].used_as_prefix |= PREFIX_FORCED;
+				kvk[VK_LCONTROL].used_as_prefix |= PREFIX_FORCED;
+				kvk[VK_RCONTROL].used_as_prefix |= PREFIX_FORCED;
+				ksc[SC_LCONTROL].used_as_prefix |= PREFIX_FORCED;
+				ksc[SC_RCONTROL].used_as_prefix |= PREFIX_FORCED;
 				break;
 			}
 			break;
 
-		default:  // vk is a left/right modifier key such as VK_LCONTROL or VK_LWIN:
-			if (aAlwaysSetAsPrefix)
-				kvk[aVK].used_as_prefix = PREFIX_ACTUAL;
+		//default:  // vk is a left/right modifier key such as VK_LCONTROL or VK_LWIN:
 		}
+		if (aAlwaysSetAsPrefix)
+			kvk[aVK].used_as_prefix |= PREFIX_ACTUAL;
 		return;
 	}
 	// Since above didn't return, using scan code instead of virtual key:
 	if (aAlwaysSetAsPrefix)
-		ksc[aSC].used_as_prefix = PREFIX_ACTUAL;
+		ksc[aSC].used_as_prefix |= PREFIX_ACTUAL;
 }
 
 
@@ -3450,7 +3453,7 @@ void ChangeHookState(Hotkey *aHK[], int aHK_count, HookType aWhichHook, HookType
 					// The hotkey's ModifierVK is itself a modifier.
 					SetModifierAsPrefix(hk.mModifierVK, 0, true);
 				else
-					kvk[hk.mModifierVK].used_as_prefix = PREFIX_ACTUAL;
+					kvk[hk.mModifierVK].used_as_prefix |= PREFIX_ACTUAL;
 				// Record the use of ~ on this prefix even if it's a standard modifier which wouldn't normally be
 				// suppressed, since this also affects whether the key's own hotkeys fire on press vs. release.
 				if (hk.mNoSuppress & NO_SUPPRESS_PREFIX)
@@ -3463,7 +3466,7 @@ void ChangeHookState(Hotkey *aHK[], int aHK_count, HookType aWhichHook, HookType
 					SetModifierAsPrefix(0, hk.mModifierSC, true);
 				else
 				{
-					ksc[hk.mModifierSC].used_as_prefix = PREFIX_ACTUAL;
+					ksc[hk.mModifierSC].used_as_prefix |= PREFIX_ACTUAL;
 					// For some scan codes this was already set above.  But to support explicit scan code prefixes,
 					// such as "SC118 & SC122::MsgBox", make sure it's set for every prefix that uses an explicit
 					// scan code:
