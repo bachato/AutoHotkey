@@ -744,6 +744,8 @@ ResultType Script::CreateWindows()
 		// we want to tolerate that:
 		CreateTrayIcon();
 
+	SetWindowsHookEx(WH_MSGFILTER, DialogMessageHookProc, NULL, g_MainThreadID);
+
 	return OK;
 }
 
