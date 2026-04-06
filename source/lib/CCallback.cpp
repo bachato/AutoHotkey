@@ -260,7 +260,7 @@ UINT64 CALLBACK RegisterCallbackCStub(UINT_PTR *params, char *address) // Used b
 				{
 					FuncResult fr;
 					ExprTokenType cls_t(ret.cls), *prm = &cls_t;
-					obj = Object::Create();
+					obj = Object::CreateStruct();
 					auto result = obj->New(fr, &prm, 1);
 					if (result == OK)
 					{
