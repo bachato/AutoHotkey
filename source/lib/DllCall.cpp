@@ -855,10 +855,8 @@ has_valid_return_type:
 					aResultToken.marker = _T("");
 					auto result = obj->Invoke(aResultToken, IT_SET | IF_BYPASS_METAFUNC | IF_NO_NEW_PROPS
 						, _T("__Value"), ExprTokenType(obj), aParam + i + 1, 1);
-					if (result == INVOKE_NOT_HANDLED)
+					if (result == INVOKE_NOT_HANDLED && this_param.symbol != SYM_MISSING)
 					{
-						if (this_param.symbol == SYM_MISSING)
-							_f_throw(ERR_PARAM_REQUIRED);
 						auto classname = param_proto->GetOwnPropString(_T("__Class"));
 						_f_throw_type(classname ? classname : _T("Object"), *aParam[i + 1]);
 					}
