@@ -532,7 +532,7 @@ void Object::CallNestedDelete()
 {
 	// Caller has prepared the thread for __Delete to be called directly.
 	ASSERT(mRefCount == 1 && mNested && mBase);
-	auto si = mBase->GetStructInfo();
+	if (auto si = mBase->GetStructInfo())
 	for (auto i = si->nested_count; i > 0; --i)
 		if (mNested[i] && !mNested[i]->mRefCount)
 		{
@@ -554,7 +554,7 @@ Object::~Object()
 	if (mNested)
 	{
 		// Nested objects have been "destructed" but not actually deleted yet.
-		auto si = mBase->GetStructInfo();
+		if (auto si = mBase->GetStructInfo())
 		for (auto i = si->nested_count; i > 0; --i)
 			if (mNested[i])
 			{
@@ -1105,7 +1105,7 @@ BIF_DECL(NewStruct)
 
 void Object::StructPtrInvoke(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount)
 {
-	auto si = GetStructInfo();
+	auto si = mBase->GetStructInfo();
 	auto proto = si->pointed_class->ClassGetPrototype();
 	auto &ptr = *(UINT_PTR*)DataPtr();
 	if (IS_INVOKE_GET)
@@ -1620,6 +1620,7 @@ Object *Object::CreatePtrClass(Object *sc, Object *sp, StructInfo *spsi)
 	ptr_cls->mNested[0] = sc;
 	spsi->pointer_class = ptr_cls;
 	auto si = ptr_pro->GetStructInfo(true);
+	ptr_pro->mFlags |= StructInfoLocked;
 	si->align = si->size = sizeof(void*);
 	si->nested_count = 1;
 	si->pointed_class = sc;
@@ -1677,7 +1678,8 @@ void Object::CreateCArrayClass(ResultToken &aResultToken, ExprTokenType &aOfClas
 	// No cached class, so create one.
 	auto ap = CreatePrototype(class_name, Object::sCArrayPrototype);
 	auto ac = CreateClass(ap, Object::sCArrayClass);
-	auto si = ap->GetStructInfo();
+	auto si = ap->GetStructInfo(true);
+	ap->mFlags |= StructInfoLocked;
 	ap->Release();
 
 	// Cache it.
@@ -2067,8 +2069,10 @@ Object::StructInfo *Object::GetStructInfo(bool aDefine)
 	if (!(mFlags & DataIsStructInfo))
 	{
 		auto pbsi = mBase ? mBase->GetStructInfo(false) : nullptr;
+		if (!aDefine)
+			return pbsi;
 		if (mFlags & DataIsSetFlag)
-			return aDefine ? nullptr : pbsi;
+			return nullptr;
 		auto psi = (StructInfo*)malloc(sizeof(StructInfo));
 		if (!psi)
 			return nullptr;
@@ -2487,7 +2491,7 @@ ResultType Object::NestedSparseInit(ResultToken& aResultToken)
 {
 	if (mNested)
 		return OK;
-	auto si = GetStructInfo();
+	auto si = mBase->GetStructInfo();
 	mNested = new (std::nothrow) Object * [si->nested_count + 1];
 	if (!mNested)
 		return aResultToken.MemoryError();
@@ -4300,8 +4304,10 @@ void Object::CreateRootPrototypes()
 		auto &psi = *sPtrPrototype->GetStructInfo(true);
 		psi.align = psi.size = sizeof(void*);
 		psi.pointed_class = sStructClass; // This is not a counted reference.
+		sPtrPrototype->mFlags |= StructInfoLocked;
 		auto &ssi = *sStructPrototype->GetStructInfo(true);
 		ssi.pointer_class = sPtrClass;
+		sPtrClass->mFlags |= StructInfoLocked;
 	}
 
 	sCArrayPrototype = CreatePrototype(_T("Struct.Array"), sStructPrototype);
