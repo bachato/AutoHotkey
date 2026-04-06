@@ -1530,7 +1530,9 @@ LRESULT CALLBACK DialogMessageHookProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 bool TranslateInputMessage(MSG &msg)
 {
-	if (auto pgui = GuiType::FindGuiParent(msg.hwnd))
+	HWND target_window;
+	auto pgui = GuiType::FindGuiParent(msg.hwnd);
+	if (pgui)
 	{
 		HWND focused_control = msg.hwnd; // Alias for maintainability.  Seems more appropriate (and efficient) to use this vs. GetFocus().
 		GuiControlType *pcontrol;
@@ -1650,26 +1652,23 @@ bool TranslateInputMessage(MSG &msg)
 			}
 		}
 
-		// IsDialogMessage() takes care of standard keyboard handling within the dialog,
-		// such as tab to change focus and Enter to activate the default button.
 		// Avoid calling IsDialogMessage() for WM_SYSCHAR if the GUI has no controls.
 		// It seems that if a GUI has no controls, IsDialogMessage() will return true for
 		// Alt+n combinations without invoking the default processing, such as focusing
 		// a menu bar item.  IsDialogMessage() still needs to be called for some messages;
 		// at the very least, WM_KEYDOWN (VK_ESC) must be intercepted for GuiEscape to work.
-		if (pgui->mControlCount || msg.message != WM_SYSCHAR)
-		{
-			g_CalledByIsDialogMessageOrDispatch = &msg;
-			bool msg_was_handled = IsDialogMessage(pgui->mHwnd, &msg); // Pass the dialog HWND, not msg.hwnd, which is often a control.
-			g_CalledByIsDialogMessageOrDispatch = nullptr;
-			if (msg_was_handled)
-				return true;
-		}
-
-		return false;
+		if (!pgui->mControlCount && msg.message == WM_SYSCHAR)
+			return false;
+		// If this Gui is a child window with WS_EX_CONTROLPARENT, the Tab key can navigate
+		// in and out of the Gui.  This doesn't work fully without WS_EX_CONTROLPARENT, so
+		// in that case (or if this isn't a child Gui) pass pgui->mHwnd to IsDialogMessage()
+		// so that the Tab key only navigates within pgui.
+		target_window = (pgui->mExStyle & WS_EX_CONTROLPARENT) ? GetAncestor(pgui->mHwnd, GA_ROOT) : NULL;
+		if (!target_window)
+			target_window = pgui->mHwnd;
 	}
-
-	HWND target_window = GetAncestor(msg.hwnd, GA_ROOT);
+	else
+		target_window = GetAncestor(msg.hwnd, GA_ROOT);
 	
 	if (target_window == g_hWnd)
 	{
@@ -1682,16 +1681,20 @@ bool TranslateInputMessage(MSG &msg)
 		{
 			return true;
 		}
-		return false;
+		// Don't return without checking pgui, since "+Parent" A_ScriptHwnd is possible:
+		//return false;
 	}
 	
-	// The following is needed for Tab navigation and some other keyboard handling in
-	// standard dialogs when the dialog loop for that specific window has been interrupted.
-	// If a dialog loop is active, we're called by IsDialogMessage() for one specific window,
-	// with know way to know which one.  Just handle all dialog windows here, and our caller
-	// won't do anything with the message because if we return false, it's a message that the
-	// dialog manager doesn't care about.
-	if (IsWindowStandardDialog(target_window))
+	// IsDialogMessage() takes care of standard keyboard handling within a Gui or dialog,
+	// such as tab to change focus and Enter to activate the default button.
+	// If a dialog loop is active, we're called by an instance of IsDialogMessage() which
+	// only handles messages for the loop's own window, not necessarily the target window.
+	// For that loop's window, we make a redundant call to IsDialogMessage() which handles
+	// the message instead of our caller (which does nothing because we return true for
+	// all interesting messages).
+	// Using the top-level (GA_ROOT) window has been verified correct in the case where a
+	// Gui contains a Gui and both have controls (and the child has WS_EX_CONTROLPARENT).
+	if (pgui || IsWindowStandardDialog(target_window))
 	{
 		g_CalledByIsDialogMessageOrDispatch = &msg;
 		bool msg_was_handled = IsDialogMessage(target_window, &msg);
