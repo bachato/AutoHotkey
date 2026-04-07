@@ -155,12 +155,7 @@ Object *Object::CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResu
 {
 	Object *obj = new Object();
 	obj->mFlags |= CannotOwnProps | NoCallDelete;
-	obj->SetBase(Object::sStructPrototype);
-	if (!obj->SetBase(aBase, aResultToken))
-	{
-		obj->Release();
-		return nullptr;
-	}
+	obj->SetBase(aBase); // Callers should have already verified this is sStructPrototype-derived.
 	if (aCopy)
 	{
 		auto size = obj->StructSize();
