@@ -2359,7 +2359,7 @@ void PropRef::__Value(ResultToken &aResultToken, int aID, int aFlags, ExprTokenT
 // Class objects
 //
 
-ResultType Object::New(ResultToken &aResultToken, ExprTokenType *aParam[], int aParamCount, Object *aOuter)
+ResultType Object::New(ResultToken &aResultToken, ExprTokenType *aParam[], int aParamCount)
 {
 	Object *base = dynamic_cast<Object *>(ParamIndexToObject(0));
 	Object *proto = base ? dynamic_cast<Object *>(base->GetOwnPropObj(_T("Prototype"))) : nullptr;
@@ -2368,11 +2368,16 @@ ResultType Object::New(ResultToken &aResultToken, ExprTokenType *aParam[], int a
 		Release();
 		return aResultToken.ParamError(0, aParam[0]);
 	}
-	if (!SetBase(proto, aResultToken))
-	{
-		Release();
-		return FAIL;
-	}
+	if (!CanSetBase(proto))
+		return aResultToken.ValueError(ERR_INVALID_BASE);
+	return New(aResultToken, proto, aParam + 1, aParamCount - 1);
+}
+
+ResultType Object::New(ResultToken &aResultToken, Object *proto, ExprTokenType *aParam[], int aParamCount, Object *aOuter)
+{
+	ASSERT(proto && (proto == mBase || proto->IsDerivedFrom(mBase)));
+	if (proto != mBase)
+		SetBase(proto);
 	if (auto si = proto->GetStructInfo()) // Typed properties are defined.
 	{
 		if (!mData && si->size)
@@ -2414,7 +2419,7 @@ ResultType Object::New(ResultToken &aResultToken, ExprTokenType *aParam[], int a
 		mNested[0] = aOuter;
 		aOuter->AddRef();
 	}
-	return Construct(aResultToken, aParam + 1, aParamCount - 1);
+	return Construct(aResultToken, aParam, aParamCount);
 }
 
 ResultType Object::NestedNew(ResultToken &aResultToken, StructInfo *si)
@@ -2455,8 +2460,13 @@ ResultType Object::NestedNew(ResultToken &aResultToken, StructInfo *si)
 			continue;
 		auto nested = CreateStruct();
 		nested->SetDataPtr(data_ptr + offsets[i-1]);
-		ExprTokenType prop_class { mNested[i] }, *pcarg {&prop_class};
-		result = nested->New(aResultToken, &pcarg, 1, this);
+		auto proto = mNested[i]->ClassGetPrototype();
+		if (!proto || !nested->CanSetBase(proto)) // FIXME: make this check unnecessary, either by making StructClass.Prototype read-only or storing the prototype elsewhere
+		{
+			result = aResultToken.Error(_T("Bad Prototype"), nullptr, ErrorPrototype::Type);
+			break;
+		}
+		result = nested->New(aResultToken, proto, nullptr, 0, this);
 		if (result != OK)
 			break;
 		// During construction, 'nested' has a non-zero mRefCount and a counted reference to 'this'.
@@ -2482,9 +2492,9 @@ ResultType Object::CArrayNew(ResultToken &aResultToken, StructInfo *si)
 {
 	ASSERT(si->nested_count && si->nested_count == si->item_count && si->pointed_class && mNested);
 
-	auto proto = si->pointed_class->ClassGetPrototype();
-
-	ExprTokenType prop_class{ si->pointed_class }, *pcarg{ &prop_class };
+	auto item_base = si->pointed_class->ClassGetPrototype();
+	if (!item_base || !item_base->IsDerivedFrom(sStructPrototype)) // FIXME: make this check unnecessary, either by making StructClass.Prototype read-only or storing the prototype elsewhere
+		return aResultToken.Error(_T("Bad Prototype"), nullptr, ErrorPrototype::Type);
 
 	auto data_ptr = DataPtr();
 	size_t item_size = si->size / si->nested_count;
@@ -2495,7 +2505,7 @@ ResultType Object::CArrayNew(ResultToken &aResultToken, StructInfo *si)
 	{
 		auto nested = CreateStruct();
 		nested->SetDataPtr(data_ptr);
-		result = nested->New(aResultToken, &pcarg, 1, this);
+		result = nested->New(aResultToken, item_base, nullptr, 0, this);
 		if (result != OK)
 			break;
 		// During construction, 'nested' has a non-zero mRefCount and a counted reference to 'this'.
