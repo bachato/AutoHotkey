@@ -317,15 +317,6 @@ FResult Object::GetDataPtr(UINT_PTR &aPtr)
 }
 
 
-#ifdef ENABLE_OBJALLOCDATA
-bif_impl FResult ObjAllocData(IObject *aObj, UINT_PTR aSize)
-{
-	if (!aObj->IsOfType(Object::sPrototype))
-		return FR_E_ARG(0);
-	return ((Object*)aObj)->AllocDataPtr(aSize);
-}
-#endif
-
 FResult Object::AllocDataPtr(UINT_PTR aSize)
 {
 	auto p = (UINT_PTR*)malloc(aSize);
@@ -346,26 +337,3 @@ bif_impl FResult ObjGetDataSize(IObject *aObj, UINT_PTR &aRetVal)
 	aRetVal = ((Object*)aObj)->StructSize();
 	return OK;
 }
-
-
-#ifdef ENABLE_OBJALLOCDATA
-bif_impl FResult ObjFreeData(IObject *aObj)
-{
-	if (!aObj->IsOfType(Object::sPrototype))
-		return FR_E_ARG(0);
-	return ((Object*)aObj)->FreeDataPtr();
-}
-
-FResult Object::FreeDataPtr()
-{
-	if ((mFlags & (DataIsAllocatedFlag | DataIsSetFlag)) == (DataIsAllocatedFlag | DataIsSetFlag))
-	{
-		free(mData);
-		mData = nullptr;
-		mFlags &= ~(DataIsAllocatedFlag | DataIsSetFlag);
-	}
-	else if (mData)
-		return FR_E_FAILED;
-	return OK;
-}
-#endif
