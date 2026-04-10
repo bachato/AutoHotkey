@@ -151,6 +151,17 @@ Object *Object::CreateStruct()
 	return obj;
 }
 
+Object *Object::CreateStruct(Object *aBase)
+{
+	auto &si = *aBase->GetStructInfo();
+	Object *obj = new (si.size) Object();
+	obj->mFlags |= CannotOwnProps;
+	obj->SetDataPtr((UINT_PTR)(obj + 1));
+	ZeroMemory((void*)obj->mData, si.size);
+	obj->SetBase(aBase);
+	return obj;
+}
+
 Object *Object::CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken, bool aCopy)
 {
 	Object *obj = new Object();
@@ -1114,8 +1125,12 @@ void Object::CArrayItem(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 
 BIF_DECL(NewStruct)
 {
-	Object *obj = Object::CreateStruct();
-	obj->New(aResultToken, aParam, aParamCount);
+	IObject *cls = ParamIndexToObject(0);
+	Object *proto = cls && cls->IsOfType(Object::sPrototype) ? ((Object*)cls)->ClassGetPrototype() : nullptr;
+	if (!proto)
+		_f_throw_value(_T("Invalid class"));
+	Object *obj = Object::CreateStruct(proto);
+	obj->New(aResultToken, proto, aParam + 1, aParamCount - 1);
 }
 
 

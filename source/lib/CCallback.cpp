@@ -259,7 +259,7 @@ UINT64 CALLBACK RegisterCallbackCStub(UINT_PTR *params, char *address) // Used b
 				else
 				{
 					FuncResult fr;
-					obj = Object::CreateStruct();
+					obj = Object::CreateStruct(ret.proto);
 					auto result = obj->New(fr, ret.proto, nullptr, 0);
 					if (result == OK)
 					{
