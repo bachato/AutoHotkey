@@ -274,9 +274,7 @@ BIF_DECL(StructClass_At)
 	auto ptr = (UINT_PTR)ParamIndexToInt64(1);
 	if (ptr < 65536)
 		return (void)aResultToken.ParamError(0, aParam[1]);
-	auto obj = Object::CreateStructPtr(ptr, proto, aResultToken);
-	if (obj)
-		_f_return(obj);
+	_f_return(Object::CreateStructPtr(proto, ptr));
 }
 
 

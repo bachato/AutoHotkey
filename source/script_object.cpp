@@ -143,43 +143,17 @@ Object *Object::Create(ExprTokenType *aParam[], int aParamCount, ResultToken *ap
 	return obj;
 }
 
-Object *Object::CreateStruct(UINT_PTR aPtr, Object *aBase)
-{
-	Object *obj = new Object();
-	obj->mFlags |= CannotOwnProps;
-	obj->SetDataPtr(aPtr);
-	obj->SetBase(aBase);
-	return obj;
-}
-
-Object *Object::CreateStruct(Object *aBase)
+Object *Object::CreateStruct(Object *aBase, UINT_PTR aPtr, UINT aFlags, bool aCopy)
 {
 	auto &si = *aBase->GetStructInfo();
-	Object *obj = new (si.size) Object();
-	obj->mFlags |= CannotOwnProps;
-	obj->SetDataPtr((UINT_PTR)(obj + 1));
-	ZeroMemory((void*)obj->mData, si.size);
-	obj->SetBase(aBase);
-	return obj;
-}
-
-Object *Object::CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken, bool aCopy)
-{
-	Object *obj = new Object();
-	obj->mFlags |= CannotOwnProps | NoCallDelete;
-	obj->SetBase(aBase); // Callers should have already verified this is sStructPrototype-derived.
+	auto suffix = aPtr && !aCopy ? 0 : si.size;
+	Object *obj = new (suffix) Object(aFlags);
+	obj->SetDataPtr(suffix ? (UINT_PTR)(obj + 1) : aPtr);
 	if (aCopy)
-	{
-		auto size = obj->StructSize();
-		if (obj->AllocDataPtr(size) != OK)
-		{
-			obj->Release();
-			return nullptr;
-		}
-		memcpy((void*)obj->DataPtr(), (void*)aPtr, size);
-	}
-	else
-		obj->SetDataPtr(aPtr);
+		memcpy((void*)obj->mData, (void*)aPtr, si.size);
+	else if (!aPtr)
+		ZeroMemory((void*)obj->mData, si.size);
+	obj->SetBase(aBase);
 	return obj;
 }
 
@@ -988,7 +962,7 @@ ResultType Object::GetBoxedPointer(ResultToken &aResultToken, UINT_PTR aPtr, Obj
 		// __Value is repeatedly invoked implicitly via a ByRef parameter or struct.
 		if (!mNested && !NestedSparseInit(aResultToken))
 			return FAIL;
-		mNested[aCacheIndex] = sp = CreateStructPtr(aPtr, aPrototype, aResultToken);
+		mNested[aCacheIndex] = sp = CreateStructPtr(aPrototype, aPtr);
 		if (!sp)
 			return FAIL;
 	}
@@ -2478,7 +2452,7 @@ ResultType Object::NestedNew(ResultToken &aResultToken, StructInfo *si)
 			result = aResultToken.Error(_T("Bad Prototype"), nullptr, ErrorPrototype::Type);
 			break;
 		}
-		auto nested = CreateStruct(data_ptr + offsets[i - 1], proto);
+		auto nested = CreateStruct(proto, data_ptr + offsets[i - 1]);
 		result = nested->Initialize(aResultToken, nullptr, 0, this);
 		if (result != OK)
 			break;
@@ -2516,7 +2490,7 @@ ResultType Object::CArrayNew(ResultToken &aResultToken, StructInfo *si)
 	size_t i;
 	for (i = 1; i <= si->nested_count; ++i, data_ptr += item_size)
 	{
-		auto nested = CreateStruct(data_ptr, item_base);
+		auto nested = CreateStruct(item_base, data_ptr);
 		result = nested->Initialize(aResultToken, nullptr, 0, this);
 		if (result != OK)
 			break;
@@ -2559,7 +2533,7 @@ ResultType Object::NestedSparseInit(ResultToken& aResultToken, TypedProperty& aP
 	auto proto = aProp.class_object->ClassGetPrototype();
 	if (!proto)
 		return INVOKE_NOT_HANDLED;
-	auto nested = CreateStructPtr(aPtr, proto, aResultToken);
+	auto nested = CreateStructPtr(proto, aPtr);
 	if (!nested)
 		return FAIL; // Error was already raised.
 	mNested[aProp.object_index] = nested;

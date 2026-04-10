@@ -185,7 +185,7 @@ UINT64 CALLBACK RegisterCallbackCStub(UINT_PTR *params, char *address) // Used b
 					// For struct parameters of sizes other than those below, x64 passes them by address.
 					auto p = (ss < 3 || ss == 4 || ss == 8) ? (UINT_PTR)next_param : *next_param;
 #endif
-					auto obj = Object::CreateStructPtr(p, arg_type[param_count].proto, result_token, true);
+					auto obj = Object::CreateStructCopyNoDelete(arg_type[param_count].proto, p);
 					if (!obj)
 					{
 						aborted = true;
@@ -276,8 +276,8 @@ UINT64 CALLBACK RegisterCallbackCStub(UINT_PTR *params, char *address) // Used b
 							TypeError(classname ? classname : _T("Struct"), fr);
 						}
 					}
+					//else an error was already raised.
 				}
-				//else CreateStructPtr already reported the error.
 				if (obj)
 				{
 					// Copy returned struct by value into the caller-provided space.

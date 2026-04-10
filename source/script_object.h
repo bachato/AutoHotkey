@@ -363,7 +363,7 @@ protected:
 	};
 
 	Object *CloneTo(Object &aTo);
-	Object() { mFlags = 0; }
+	Object(UINT aFlags = 0) { mFlags = aFlags; }
 	~Object();
 	bool Delete() override;
 
@@ -426,9 +426,9 @@ public:
 
 	static Object *Create();
 	static Object *Create(ExprTokenType *aParam[], int aParamCount, ResultToken *apResultToken = nullptr);
-	static Object *CreateStruct(UINT_PTR aPtr, Object *aBase);
-	static Object *CreateStruct(Object *aBase);
-	static Object *CreateStructPtr(UINT_PTR aPtr, Object *aBase, ResultToken &aResultToken, bool aCopy = false);
+	static Object *CreateStruct(Object *aBase, UINT_PTR aPtr = NULL, UINT aFlags = CannotOwnProps, bool aCopy = false);
+	static Object *CreateStructCopyNoDelete(Object *aBase, UINT_PTR aPtr) { return CreateStruct(aBase, aPtr, CannotOwnProps | NoCallDelete, true); }
+	static Object *CreateStructPtr(Object *aBase, UINT_PTR aPtr) { return CreateStruct(aBase, aPtr, CannotOwnProps | NoCallDelete); }
 
 	static ResultType ApplyParams(ResultToken &aThisResultToken, int aFlags, ExprTokenType *aParam[], int aParamCount);
 
