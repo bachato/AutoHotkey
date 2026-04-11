@@ -165,7 +165,7 @@ struct NewInstanceParam
 
 BIF_DECL(NewInstance)
 {
-	auto &a = *(NewInstanceParam*)aResultToken.func->mData;
+	auto &a = *(NewInstanceParam*)aResultToken.callee_id;
 	IObject *cls = ParamIndexToObject(0);
 	Object *proto = cls && cls->IsOfType(Object::sPrototype) ? ((Object*)cls)->ClassGetPrototype() : nullptr;
 	if (proto != a.prototype && !proto->IsDerivedFrom(a.prototype))
@@ -4497,7 +4497,7 @@ void Object::DefineClass(name_t aName, Object *aClass, bool aIsStructPtrClass)
 
 BIF_DECL(Class_GetNestedClass)
 {
-	auto info = (NestedClassInfo *)aResultToken.func->mData;
+	auto info = (NestedClassInfo *)aResultToken.callee_id;
 	auto cls = info->class_object;
 	cls->AddRef();
 	if (info->constructed)
@@ -4509,7 +4509,7 @@ BIF_DECL(Class_GetNestedClass)
 
 BIF_DECL(Class_CallNestedClass)
 {
-	auto info = (NestedClassInfo *)aResultToken.func->mData;
+	auto info = (NestedClassInfo *)aResultToken.callee_id;
 	auto cls = info->class_object;
 	if (!info->constructed)
 	{

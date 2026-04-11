@@ -410,7 +410,7 @@ __int64 pow_ll(__int64 base, __int64 exp); // integer power function
 #define _f_retval_buf			(aResultToken.buf)
 #define _f_retval_buf_size		MAX_NUMBER_SIZE
 #define _f_number_buf			_f_retval_buf  // An alias to show intended usage, and in case the buffer size is changed.
-#define _f_callee_id			(aResultToken.func->mFID)
+#define _f_callee_id			((BuiltInFunctionID)(UINT_PTR)aResultToken.callee_id)
 // The _o_ macros originally needed different implementations due to differences between the
 // function signature for methods and that for built-in functions.  Currently they're similar
 // enough that most of these macros can just be aliases (kept for maintainability).
