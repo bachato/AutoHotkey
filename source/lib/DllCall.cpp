@@ -671,11 +671,10 @@ has_valid_return_type:
 	{
 		aResultToken.symbol = SYM_STRING; // Set default for Invoke.
 		aResultToken.marker = _T("");
-		NewStruct(aResultToken, aParam + aParamCount, 1);
-		if (aResultToken.Exited())
-			return; // New releases obj on failure.
+		if (Object::CreateStruct(aResultToken, return_proto) != OK)
+			return; // Initialize releases obj on failure.
 		ASSERT(aResultToken.symbol == SYM_OBJECT);
-		auto obj = aResultToken.object;
+		auto obj = (Object*)aResultToken.object;
 		return_struct_ptr = (void*)((Object*)obj)->DataPtr();
 		pObj[nObj++] = obj;
 		aResultToken.symbol = SYM_INTEGER; // Ensure it is not SYM_OBJECT, for maintainability (in case of early exit due to an error).
@@ -840,12 +839,10 @@ has_valid_return_type:
 			{
 				aResultToken.symbol = SYM_STRING; // Set default for Invoke.
 				aResultToken.marker = _T("");
-				ExprTokenType t = param_class, *pt = &t; // Can't use aParam[i] directly since param_class might have been overridden.
-				NewStruct(aResultToken, &pt, 1);
-				if (aResultToken.Exited())
-					return; // New releases obj on failure.
+				if (Object::CreateStruct(aResultToken, param_proto) != OK)
+					return; // Initialize releases obj on failure.
 				ASSERT(aResultToken.symbol == SYM_OBJECT);
-				auto obj = aResultToken.object;
+				auto obj = (Object*)aResultToken.object;
 				pObj[nObj++] = this_param_obj = obj;
 				if (aParam[i+1]->symbol != SYM_VAR || !aParam[i+1]->var->IsUninitialized()) // It's not &var, or var has a value.
 				{

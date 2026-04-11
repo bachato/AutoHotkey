@@ -157,6 +157,12 @@ Object *Object::CreateStruct(Object *aBase, UINT_PTR aPtr, UINT aFlags, bool aCo
 	return obj;
 }
 
+ResultType Object::CreateStruct(ResultToken &aResultToken, Object *aBase, ExprTokenType *aParam[], int aParamCount)
+{
+	auto obj = CreateStruct(aBase);
+	return obj->Initialize(aResultToken, aParam, aParamCount);
+}
+
 struct NewInstanceParam
 {
 	NewObjectProc create;
@@ -1141,8 +1147,7 @@ BIF_DECL(NewStruct)
 	Object *proto = cls && cls->IsOfType(Object::sPrototype) ? ((Object*)cls)->ClassGetPrototype() : nullptr;
 	if (!proto)
 		_f_throw_value(_T("Invalid class"));
-	Object *obj = Object::CreateStruct(proto);
-	obj->Initialize(aResultToken, aParam + 1, aParamCount - 1);
+	Object::CreateStruct(aResultToken, proto, aParam + 1, aParamCount - 1);
 }
 
 
