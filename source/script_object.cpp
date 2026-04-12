@@ -151,11 +151,15 @@ Object *Object::CreateStruct(Object *aBase, UINT_PTR aPtr, UINT aFlags, bool aCo
 	auto &si = *aBase->GetStructInfo(true);
 	auto suffix = aPtr && !aCopy ? 0 : si.size;
 	Object *obj = new (suffix) Object(aFlags);
-	obj->SetDataPtr(suffix ? (UINT_PTR)(obj + 1) : aPtr);
-	if (aCopy)
-		memcpy((void*)obj->mData, (void*)aPtr, si.size);
-	else if (!aPtr)
-		ZeroMemory((void*)obj->mData, si.size);
+	if (si.size)
+	{
+		void *data = aPtr ? (void*)aPtr : obj + 1;
+		obj->SetDataPtr((UINT_PTR)data);
+		if (aCopy)
+			memcpy(data, (void*)aPtr, si.size);
+		else if (!aPtr)
+			ZeroMemory(data, si.size);
+	}
 	obj->SetBase(aBase);
 	return obj;
 }
@@ -166,46 +170,39 @@ ResultType Object::CreateStruct(ResultToken &aResultToken, Object *aBase, ExprTo
 	return obj->Initialize(aResultToken, aParam, aParamCount);
 }
 
-struct NewInstanceParam
+void Object::NewInstance(ResultToken &aResultToken, ExprTokenType *aParam[], int aParamCount)
 {
-	NewObjectProc create;
-	Object *prototype;
-};
-
-BIF_DECL(NewInstance)
-{
-	auto &a = *(NewInstanceParam*)aResultToken.callee_id;
+	auto nproto = (Object*)aResultToken.callee_id;
+	auto nsi = (StructInfo*)(nproto + 1);
 	IObject *cls = ParamIndexToObject(0);
 	// For backward-compatibility, this must permit any Object (not just a Class)
 	// with a Prototype own property which is any Object (not just a Prototype).
 	IObject *prt = cls && cls->IsOfType(Object::sPrototype) ? ((Object*)cls)->GetOwnPropObj(_T("Prototype")) : nullptr;
 	Object *proto = prt && prt->IsOfType(Object::sPrototype) ? (Object*)prt : nullptr;
-	if (proto != a.prototype && (!proto || !proto->IsDerivedFrom(a.prototype)))
+	auto si = proto ? proto->GetStructInfo(true) : nullptr;
+	if (!si || si->create != nsi->create)
 		_f_throw_value(ERR_INVALID_BASE);
-	Object *obj = Object::CreateInstance(a.create, proto);
+	Object *obj = CreateInstance(si->create, si->object_size, proto);
 	obj->Initialize(aResultToken, aParam + 1, aParamCount - 1);
 }
 
-Object *Object::CreateInstance(NewObjectProc aCreate, Object *aBase)
+Object *Object::CreateInstance(NewObjectProc aCreate, UINT aDataOffset, Object *aBase)
 {
 	auto &si = *aBase->GetStructInfo(true);
-	void *suffix;
-	auto obj = aCreate(si.size, suffix);
+	auto obj = aCreate(si.size);
 	if (si.size)
 	{
-		obj->SetDataPtr((UINT_PTR)suffix);
-		ZeroMemory(suffix, si.size);
+		obj->SetDataPtr((UINT_PTR)obj + aDataOffset);
+		ZeroMemory(obj->mData, si.size);
 	}
 	obj->SetBase(aBase);
 	return obj;
 }
 
 template<class T>
-Object *NewObject(size_t aSuffixSize, void *&aSuffix)
+T *NewObject(size_t aSuffixSize)
 {
-	auto p = new (aSuffixSize) T();
-	aSuffix = p + 1;
-	return p;
+	return new (aSuffixSize) T();
 }
 
 
@@ -1616,11 +1613,12 @@ Object *Object::CreateClass(LPTSTR aClassName, Object *aBase, Object *aPrototype
 		}
 		else
 		{
-			auto a = SimpleHeap::Alloc<NewInstanceParam>();
-			a->create = (NewObjectProc)aFactory.call;
-			a->prototype = aPrototype;
-			ctor->mData = a;
+			auto &si = *(StructInfo*)(aPrototype + 1);
+			si.create = (NewObjectProc)aFactory.call;
+			si.object_size = aFactory.object_size;
+			ctor->mData = aPrototype;
 			ctor->mBIF = NewInstance;
+			aPrototype->mFlags |= StructInfoInitialized | StructInfoLocked;
 		}
 		ctor->mMinParams = aFactory.min_params; // Usually 1, the class object.
 		ctor->mParamCount = aFactory.max_params;
@@ -2141,6 +2139,8 @@ Object::StructInfo *Object::GetStructInfo(bool aLock)
 		// Even if this ends up being locked below as an exact copy of base,
 		// initialize it to reduce the need for recursive calls at runtime.
 		auto &si = *(StructInfo*)(this + 1);
+		si.create = bsi.create;
+		si.object_size = bsi.object_size;
 		si.size = bsi.size;
 		si.align = bsi.align;
 		si.nested_count = bsi.nested_count;
@@ -4513,11 +4513,8 @@ BIF_DECL(Class_New)
 	// Class(unset) would have thrown ERR_TOO_MANY_PARAMS, so is exempted from this.
 	if (aParamCount == 1)
 	{
-		NewInstanceParam a;
-		a.create = NewObject<Object>;
-		a.prototype = Object::sPrototype;
-		aResultToken.callee_id = &a;
-		return NewInstance(aResultToken, aParam, aParamCount);
+		aResultToken.callee_id = Object::sPrototype;
+		return Object::NewInstance(aResultToken, aParam, aParamCount);
 	}
 
 	// aParam[0] is implicit and mandatory, as this is a method.  Usually it should be Class itself,

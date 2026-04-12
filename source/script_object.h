@@ -120,16 +120,21 @@ struct ObjectMemberListType
 
 
 // Helper for predefined classes
-typedef Object* (*NewObjectProc)(size_t, void*&);
+typedef Object* (*NewObjectProc)(size_t);
 struct ClassFactoryDef
 {
 	void *call;
+	UINT object_size;
 	UCHAR min_params, max_params, is_variadic;
 	bool is_bif;
 	ClassFactoryDef(BuiltInFunctionType aCall, int aMin, int aMax, bool aVariadic = false) : call(aCall), min_params(aMin), max_params(aMax), is_variadic(aVariadic), is_bif(true) {}
 	ClassFactoryDef(BuiltInFunctionType aCall = nullptr) : ClassFactoryDef(aCall, 1, 1, true) {}
 	ClassFactoryDef(nullptr_t) : ClassFactoryDef((BuiltInFunctionType)nullptr) {}
-	ClassFactoryDef(NewObjectProc aCall, int aMin = 1, int aMax = 1, bool aVariadic = true) : call(aCall), min_params(aMin), max_params(aMax), is_variadic(aVariadic), is_bif(false) {}
+
+	// Object size is inferred from the return type of the parameter,
+	// so the return type must be the exact type this factory constructs.
+	template<class T>
+	ClassFactoryDef(T* (*New)(size_t)) : call(New), object_size(sizeof(T)), min_params(1), max_params(1), is_variadic(true), is_bif(false) {}
 };
 
 
@@ -334,6 +339,7 @@ protected:
 
 	struct StructInfo
 	{
+		NewObjectProc create;
 		size_t size;
 		size_t align;
 		size_t nested_count;
@@ -341,6 +347,7 @@ protected:
 		Object *pointed_class;
 		Object *pointer_class;
 		Map *array_class_map;
+		UINT object_size;
 		MdType native_type;
 		UCHAR dllcall_type;
 		bool is_unsigned;
@@ -433,7 +440,8 @@ public:
 	static Object *CreateStruct(Object *aBase, UINT_PTR aPtr = NULL, UINT aFlags = CannotOwnProps, bool aCopy = false);
 	static Object *CreateStructCopyNoDelete(Object *aBase, UINT_PTR aPtr) { return CreateStruct(aBase, aPtr, CannotOwnProps | NoCallDelete, true); }
 	static Object *CreateStructPtr(Object *aBase, UINT_PTR aPtr) { return CreateStruct(aBase, aPtr, CannotOwnProps | NoCallDelete); }
-	static Object *CreateInstance(NewObjectProc aCreate, Object *aBase);
+	static Object *CreateInstance(NewObjectProc aCreate, UINT aDataOffset, Object *aBase);
+	static void NewInstance(ResultToken &aResultToken, ExprTokenType *aParam[], int aParamCount);
 	static ResultType CreateStruct(ResultToken &aResultToken, Object *aBase, ExprTokenType *aParam[] = nullptr, int aParamCount = 0);
 
 	static ResultType ApplyParams(ResultToken &aThisResultToken, int aFlags, ExprTokenType *aParam[], int aParamCount);
