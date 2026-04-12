@@ -16,6 +16,9 @@
 #define STRUCT_PTR_CLASS_NAME _T("Ptr")
 #define STRUCT_PTR_CLASS_SUFFIX _T(".") STRUCT_PTR_CLASS_NAME
 
+// Used on functions called only during program startup where inlining just wastes space.
+#define STARTUP_FUNCTION __declspec(noinline)
+
 
 //
 // CallMethod - Invoke a method with no parameters, discarding the result.
@@ -1504,12 +1507,14 @@ Object *Object::CreatePrototype(LPTSTR aClassName, Object *aBase)
 }
 
 
+STARTUP_FUNCTION
 Object *Object::CreatePrototype(LPTSTR aClassName, Object *aBase, ObjectMember aMember[], int aMemberCount)
 {
 	auto obj = CreatePrototype(aClassName, aBase);
 	return DefineMembers(obj, aClassName, aMember, aMemberCount);
 }
 
+STARTUP_FUNCTION
 Object *Object::CreatePrototype(LPTSTR aClassName, Object *aBase, ObjectMemberMd aMember[], int aMemberCount)
 {
 	auto obj = CreatePrototype(aClassName, aBase);
@@ -1525,6 +1530,7 @@ Object *Object::CreatePrototype(LPTSTR aClassName, Object *aBase, ObjectMemberLi
 }
 
 
+STARTUP_FUNCTION
 Object *Object::DefineMembers(Object *obj, LPTSTR aClassName, ObjectMember aMember[], int aMemberCount)
 {
 	if (aMemberCount)
@@ -1590,6 +1596,7 @@ Object *Object::DefineMembers(Object *obj, LPTSTR aClassName, ObjectMember aMemb
 	return obj;
 }
 
+STARTUP_FUNCTION
 Object *Object::CreateClass(LPTSTR aClassName, Object *aBase, Object *aPrototype, ClassFactoryDef aFactory)
 {
 	auto class_obj = CreateClass(aPrototype, aBase);
@@ -4346,10 +4353,9 @@ void Object::CreateRootPrototypes()
 		sStructPrototype->mFlags |= StructInfoInitialized | StructInfoLocked;
 	}
 
-	sCArrayPrototype = CreatePrototype(_T("Struct.Array"), sStructPrototype);
-	sCArrayClass = CreateClass(sCArrayPrototype, sStructClass);
-	DefineMembers(sCArrayPrototype, _T("Struct.Array"), sCArrayMembers, _countof(sCArrayMembers));
+	sCArrayPrototype = CreatePrototype(_T("Struct.Array"), sStructPrototype, sCArrayMembers, _countof(sCArrayMembers));
 	sCArrayPrototype->mFlags &= ~NativeClassPrototype;
+	sCArrayClass = CreateClass(sCArrayPrototype, sStructClass);
 	sStructClass->DefineClass(_T("Array"), sCArrayClass, true);
 
 	LPTSTR const type_names[]{ _T("Float32"), _T("Float64"), _T("Int16"), _T("Int32"), _T("Int64"), _T("Int8"), _T("IntPtr"), _T("UInt16"), _T("UInt32"), _T("UInt8") };

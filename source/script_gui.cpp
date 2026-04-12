@@ -734,8 +734,7 @@ void GuiControlType::DefineControlClasses()
 		TCHAR buf[32];
 		_sntprintf(buf, 32, _T("Gui.%s"), sTypeNames[i]);
 		sPrototypes[i] = CreatePrototype(buf, base_proto, more_items, how_many);
-		auto cls = CreateClass(sPrototypes[i]);
-		cls->SetBase(base_class);
+		auto cls = CreateClass(sPrototypes[i], base_class);
 		gui_class->DefineClass(sTypeNames[i], cls);
 	}
 }
