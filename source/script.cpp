@@ -9563,11 +9563,11 @@ standard_pop_into_postfix: // Use of a goto slightly reduces code size.
 			}
 			if (IS_CPAREN_LIKE(infix_symbol) || infix_symbol == SYM_COMMA)
 			{
-				if (stack_symbol == SYM_FUNC && this_postfix < chain_end)
+				if (stack_symbol == SYM_FUNC)
 				{
 					if ((**stk).callsite->func == sIsSetFunc)
 						(**stk).callsite->flags |= EIF_ISSET_UNSET;
-					else
+					else if (this_postfix < chain_end)
 						return LineError(_T("This unset expression requires a final \"?\" or \"??\"."), FAIL, this_postfix->error_reporting_marker);
 				}
 			}
