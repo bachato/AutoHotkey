@@ -351,11 +351,14 @@ bif_impl FResult CallbackCreate(IObject *func, optl<StrArg> aOptions, ExprTokenT
 
 	bool params_specified = aParams != nullptr;
 	Array *param_types = nullptr; // v2.1: Pass an array of parameter types.
+	IObjectRef obj_ref;
 	if (params_specified && !TokenIsNumeric(*aParams))
 	{
 		param_types = Array::FromEnumerable(*aParams);
 		if (!param_types)
 			return FR_FAIL;
+		obj_ref = param_types;
+		param_types->Release();
 	}
 	int actual_param_count = param_types ? (int)param_types->Length() - 1 : aParams ? (int)TokenToInt64(*aParams) : 0;
 	if (pass_params_pointer && (param_types || require_param_count && !params_specified)
@@ -372,10 +375,7 @@ bif_impl FResult CallbackCreate(IObject *func, optl<StrArg> aOptions, ExprTokenT
 	
 #ifdef WIN32_PLATFORM
 	if (!use_cdecl && actual_param_count > 31) // The ASM instruction currently used limits parameters to 31 (which should be plenty for any realistic use).
-	{
-		func->Release();
 		return FR_E_ARG(2);
-	}
 #endif
 
 	// GlobalAlloc() and dynamically-built code is the means by which a script can have an unlimited number of
