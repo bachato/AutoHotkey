@@ -1455,8 +1455,20 @@ Object *Object::ClassGetPrototype()
 }
 
 
+bool Object::CanSetBase()
+{
+	// false if StructInfo was already initialized from the current Base.
+	// false if this is an instance with typed properties.
+	if (mFlags & (StructInfoInitialized | DataIsSuffix | DataIsSuffixPtr))
+		return false;
+	return true;
+}
+
+
 bool Object::CanSetBase(Object *aBase)
 {
+	if (aBase && aBase->GetStructInfo()->size)
+		return false;
 	auto new_native_base = (!aBase || aBase->IsNativeClassPrototype())
 		? aBase : aBase->GetNativeBase();
 	return new_native_base == GetNativeBase() // Cannot change native type.
@@ -1466,6 +1478,8 @@ bool Object::CanSetBase(Object *aBase)
 
 ResultType Object::SetBase(Object *aNewBase, ResultToken &aResultToken)
 {
+	if (!CanSetBase())
+		return aResultToken.ValueError(ERR_PROPERTY_READONLY);
 	if (!CanSetBase(aNewBase))
 		return aResultToken.ValueError(ERR_INVALID_BASE);
 	SetBase(aNewBase);

@@ -578,7 +578,8 @@ public:
 	bool GetStructArgInfo(DYNAPARM &aType, Object *&aPointedClass);
 	MdType GetStructMdType();
 
-	bool CanSetBase(Object *aNewBase);
+	bool CanSetBase(); // Can Base be changed for this Object?
+	bool CanSetBase(Object *aNewBase); // Is aNewBase a valid Base for this Object?
 	ResultType SetBase(Object *aNewBase, ResultToken &aResultToken);
 	void SetBase(Object *aNewBase)
 	{ 
