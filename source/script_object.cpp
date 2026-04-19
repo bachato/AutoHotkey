@@ -631,7 +631,7 @@ void Object::CallMetaDelete()
 
 Object::~Object()
 {
-	if (mFlags & StructInfoInitialized)
+	if (mFlags & ClassPrototype)
 	{
 		auto &si = *(StructInfo*)(this + 1);
 		// Iterate first_field & next_field (this prototype's own definitions),
