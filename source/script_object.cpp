@@ -599,13 +599,11 @@ void Object::CallMetaDelete()
 	{
 		if (!si->pointed_class) // Primitive values.
 			return;
-		auto item_base = si->pointed_class->ClassGetPrototype();
-		if (!item_base) // FIXME: make this check unnecessary
-			return;
-		auto item_si = item_base->GetStructInfo();
-		if (item_si->IsPointerType())
+		// Element type is inferred by overall nest size and count.
+		size_t nested_size = si->nested_object_size / si->item_count;
+		if (nested_size == sizeof(Object*))
 			return; // Pointers are released by ~Object().
-		size_t nested_size = item_si->SizeWhenNested();
+		ASSERT(nested_size >= sizeof(Object));
 		char *nest = (char*)this + si->object_size + si->nested_object_size;
 		for (size_t i = 0; i < si->item_count; ++i)
 		{
@@ -673,11 +671,28 @@ Object::~Object()
 					p->~Object();
 				}
 			}
-		if (si->pointed_class && !si->item_count) // Ptr class.
+		if (si->pointed_class) // Struct.Array or Struct.Ptr class.
 		{
-			auto p = (Object**)((char*)this + si->object_size);
-			if (*p)
-				(*p)->Release();
+			// Element type is inferred by overall nest size and count.
+			size_t count = max(si->item_count, 1);
+			size_t nested_size = si->nested_object_size / count;
+			char *nest = (char*)this + si->object_size + si->nested_object_size;
+			if (nested_size == sizeof(Object*))
+			{
+				auto p = (Object**)nest;
+				for (size_t i = 0; i < count; ++i)
+					if (*--p)
+						(*p)->Release();
+			}
+			else
+			{
+				ASSERT(nested_size >= sizeof(Object));
+				for (size_t i = 0; i < count; ++i)
+				{
+					auto nested = (Object*)(nest -= nested_size); // Destruct right to left.
+					nested->~Object();
+				}
+			}
 		}
 	}
 	if (mBase)
