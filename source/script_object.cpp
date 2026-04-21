@@ -667,7 +667,8 @@ Object::~Object()
 				else
 				{
 					auto p = (Object*)nest;
-					p->~Object();
+					if (*(UINT_PTR*)p) // vftbl initialized
+						p->~Object();
 				}
 			}
 		if (si->pointed_class) // Struct.Array or Struct.Ptr class, or a Class.
