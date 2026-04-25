@@ -2488,11 +2488,10 @@ ResultType Object::Initialize(ResultToken &aResultToken, ExprTokenType *aParam[]
 {
 	if (auto si = mBase->GetStructInfo(true))
 	{
-		if (si->nested_object_size)
+		if (si->nested_object_size >= sizeof(Object)) // May have constructible properties.
 		{
 			auto result = si->item_count ? CArrayNew(aResultToken, si)
-				: si->pointed_class ? OK // Pointer classes don't have constructible properties.
-				: NestedNew(aResultToken, si);
+				: NestedNew(aResultToken, DataPtr(), mBase);
 			if (result != OK)
 				return result;
 		}
@@ -2500,13 +2499,21 @@ ResultType Object::Initialize(ResultToken &aResultToken, ExprTokenType *aParam[]
 	return CallInitNew(aResultToken, aParam, aParamCount);
 }
 
-ResultType Object::NestedNew(ResultToken &aResultToken, StructInfo *si)
+ResultType Object::NestedNew(ResultToken &aResultToken, UINT_PTR aPtr, Object *aBase)
 {
-	ASSERT(si->nested_object_size && !si->item_count);
-	
-	auto data_ptr = DataPtr();
+	ASSERT(aBase->IsClassPrototype());
+	auto si = (StructInfo*)(aBase + 1);
+	if (si->nested_object_size < sizeof(Object)) // Definitely no constructible properties defined by aBase.
+		return OK;
 
 	ResultType result = OK;
+	if (aBase->mBase) // Construct inherited nested objects first.
+	{
+		result = NestedNew(aResultToken, aPtr, aBase->mBase);
+		if (result != OK)
+			return result;
+	}
+	
 	for (auto tprop = si->first_field; tprop; tprop = tprop->next_field)
 	{
 		if (!tprop->class_object || tprop->pointed_proto) // Primitive or Ptr
@@ -2520,7 +2527,7 @@ ResultType Object::NestedNew(ResultToken &aResultToken, StructInfo *si)
 		++mRefCount;
 		nested->mOuter = this;
 		nested->SetBase(proto);
-		nested->SetDataPtr(data_ptr + tprop->data_offset);
+		nested->SetDataPtr(aPtr + tprop->data_offset);
 		result = nested->Initialize(aResultToken, nullptr, 0);
 		if (result != OK)
 		{

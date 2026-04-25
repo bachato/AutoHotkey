@@ -427,7 +427,7 @@ protected:
 	ResultType CallMeta(LPTSTR aName, ResultToken &aResultToken, ExprTokenType &aThisToken, ExprTokenType *aParam[], int aParamCount);
 	ResultType CallMetaVarg(int aFlags, LPTSTR aName, ResultToken &aResultToken, ExprTokenType &aThisToken, ExprTokenType *aParam[], int aParamCount);
 	void CallMetaDelete();
-	ResultType NestedNew(ResultToken &aResultToken, StructInfo *si);
+	ResultType NestedNew(ResultToken &aResultToken, UINT_PTR aPtr, Object *aBase);
 	ResultType NestedSparseInit(ResultToken& aResultToken, TypedProperty& aProp, UINT_PTR aPtr);
 	ResultType CArrayNew(ResultToken &aResultToken, StructInfo *si);
 	
