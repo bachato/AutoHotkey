@@ -51,8 +51,7 @@ BIF_DECL(BIF_IsObject)
 
 BIF_DECL(BIF_ObjXXX)
 {
-	aResultToken.symbol = SYM_STRING;
-	aResultToken.marker = _T(""); // Set default for CallBuiltin().
+	aResultToken.InitInvokeRetVal();
 	
 	Object *obj = dynamic_cast<Object*>(TokenToObject(*aParam[0]));
 	if (obj)

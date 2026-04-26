@@ -3691,6 +3691,7 @@ ResultType TokenSetResult(ResultToken &aResultToken, LPCTSTR aValue, size_t aLen
 			return aResultToken.MemoryError();
 		aResultToken.marker = aResultToken.mem_to_free; // Store the address of the result for the caller.
 	}
+	aResultToken.symbol = SYM_STRING;
 	if (aValue) // Caller may pass NULL to retrieve a buffer of sufficient size.
 		tmemcpy(aResultToken.marker, aValue, aLength);
 	aResultToken.marker[aLength] = '\0'; // Must be done separately from the memcpy() because the memcpy() might just be taking a substring (i.e. long before result's terminator).
@@ -3732,7 +3733,6 @@ ResultType ResultToken::Return(LPTSTR aValue, size_t aLength)
 // Copy and return a string.
 {
 	ASSERT(aValue);
-	symbol = SYM_STRING;
 	return TokenSetResult(*this, aValue, aLength);
 }
 

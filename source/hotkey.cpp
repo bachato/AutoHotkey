@@ -2646,9 +2646,6 @@ Hotstring *Hotstring::FindHotstring(LPCTSTR aHotstring, bool aCaseSensitive, boo
 
 bif_impl FResult BIF_Hotstring(StrArg name, ExprTokenType *aReplacement, optl<StrArg> aOnOff, ResultToken &aResultToken)
 {
-	aResultToken.symbol = SYM_STRING;
-	aResultToken.marker = _T("");
-
 	TCHAR number_buf[MAX_NUMBER_SIZE];
 	auto action = aReplacement ? TokenToString(*aReplacement, number_buf) : _T("");
 

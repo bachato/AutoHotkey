@@ -5067,10 +5067,10 @@ ResultType Script::AddLine(ActionTypeType aActionType, LPTSTR aArg[], int aArgc,
 		mIgnoreNextBlockBegin = false;
 		return OK;
 	}
-	if (aActionType == ACT_RETURN && !aArgc && g->CurrentFunc && !g->CurrentFunc->mBackCompatMode) // ACT_RETURN without args returns "", so v2.1 mode needs the following.
+	if (aActionType == ACT_RETURN && !aArgc && g->CurrentFunc && g->CurrentFunc->mBackCompatMode) // ACT_RETURN without args returns unset, so v2.0 mode needs the following.
 	{
 		aArg = (LPTSTR*)_alloca(sizeof(LPTSTR*));
-		*aArg = _T("unset");
+		*aArg = _T("\"\"");
 		aArgc = 1;
 	}
 
@@ -8844,13 +8844,13 @@ unquoted_literal:
 				CHECK_AUTO_CONCAT;
 				infix[infix_count].callsite = new CallSite();
 				infix[infix_count].callsite->func = sIsSetFunc;
-				infix[infix_count].error_reporting_marker = cp;
 				this_deref_ref.symbol = SYM_FUNC;
 			}
 			infix[infix_count].symbol = this_deref_ref.symbol;
-			infix[infix_count].error_reporting_marker = this_deref_ref.marker;
+			infix[infix_count].error_reporting_marker = cp;
 			if (this_deref_ref.symbol == SYM_MISSING)
 			{
+				infix[infix_count].unset_kind = UnsetKind::Unspecified; // This is required for function return values.
 				// Insert a SYM_MAYBE to handle validation.
 				infix_count++;
 				infix[infix_count].symbol = SYM_MAYBE;
@@ -9070,7 +9070,8 @@ unquoted_literal:
 				token->callsite = new CallSite();
 				if (!token->callsite)
 					return LineError(ERR_OUTOFMEM);
-				token->error_reporting_marker = this_infix->error_reporting_marker;
+				token->error_reporting_marker = this_infix[-1].symbol == SYM_VAR ? this_infix[-1].var_deref->marker
+					: this_infix->error_reporting_marker;
 				STACK_PUSH(token);
 			}
 			else
@@ -10935,10 +10936,10 @@ ResultType Line::ExecUntil(ExecUntilMode aMode, ResultToken *aResultToken, Line 
 			continue;  // Resume looping starting at the above line.  "continue" is actually slightly faster than "break" in these cases.
 
 		case ACT_BLOCK_END:
-			// v2.1: This is handled at runtime rather than by inserting ACT_RETURN avoid complications
+			// v2.1: This is handled at runtime rather than by inserting ACT_RETURN to avoid complications
 			// with 1) auto-generated __Init methods, and 2) #Warn Unreachable.
-			if (line->mAttribute && ((UserFunc*)line->mAttribute)->mBackCompatMode == false && aResultToken)
-				aResultToken->symbol = SYM_MISSING;
+			if (line->mAttribute && ((UserFunc*)line->mAttribute)->mBackCompatMode && aResultToken)
+				aResultToken->SetValue(_T(""), 0);
 			// v2: This check is disabled to reduce code size, as it doesn't seem to be needed
 			// now that GOSUB has been removed.  Validation in PreparseBlocks() should make it
 			// impossible to produce this condition:

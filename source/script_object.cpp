@@ -742,7 +742,7 @@ LPTSTR Object::sMetaFuncName[] = { _T("__Get"), _T("__Set"), _T("__Call") };
 ResultType Object::Invoke(IObject_Invoke_PARAMS_DECL)
 {
 	// In debug mode, verify aResultToken has been initialized correctly.
-	ASSERT(aResultToken.symbol == SYM_STRING && aResultToken.marker && !*aResultToken.marker);
+	ASSERT(aResultToken.symbol == SYM_MISSING);
 	ASSERT(aResultToken.Result() == OK);
 
 	name_t name;
@@ -1066,7 +1066,7 @@ ResultType Object::GetBoxedPointer(ResultToken &aResultToken, UINT_PTR aPtr, Obj
 	{
 		if (!aPtr)
 		{
-			aResultToken.symbol = SYM_MISSING;
+			aResultToken.Unset();
 			return OK;
 		}
 		*nest = sp = CreateStructPtr(aPrototype, aPtr);
@@ -1233,8 +1233,7 @@ ResultType Object::ApplyParams(ResultToken &aThisResultToken, int aFlags, ExprTo
 	ResultToken this_token;
 	this_token.CopyValueFrom(aThisResultToken);
 	this_token.mem_to_free = aThisResultToken.mem_to_free;
-	aThisResultToken.mem_to_free = nullptr;
-	aThisResultToken.SetValue(_T(""), -1);
+	aThisResultToken.InitResult(aThisResultToken.buf);
 	auto &aResultToken = aThisResultToken;
 	
 	IObject *this_obj = TokenToObject(this_token);
@@ -1319,7 +1318,7 @@ void Map::__Item(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *
 			{
 				auto result = Invoke(aResultToken, IT_GET, _T("Default"), ExprTokenType { this }, nullptr, 0);
 				if (result == INVOKE_NOT_HANDLED)
-					_o_return_unset;
+					_o_return_unset_item;
 				return;
 			}
 			// Otherwise, caller provided a default value.
@@ -1777,7 +1776,7 @@ BIF_DECL(StructClass_Ptr)
 	if (_f_callee_id && aResultToken.symbol == SYM_OBJECT)
 	{
 		auto cls = (Object*)aResultToken.object;
-		aResultToken.SetValue(_T(""));
+		aResultToken.InitInvokeRetVal();
 		cls->Invoke(aResultToken, IT_CALL, nullptr, ExprTokenType{ cls }, aParam + 1, aParamCount - 1);
 		cls->Release();
 	}
@@ -1864,7 +1863,6 @@ void Object::DeleteProp(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 		_o_return_empty;
 	field->ReturnMove(aResultToken); // Return the removed value.
 	mFields.Remove((index_t)(field - mFields), 1);
-	_o_return_empty;
 }
 
 void Map::Delete(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount)
@@ -1881,7 +1879,7 @@ void Map::Delete(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *
 	{
 		// Our return value when only one arg is given is supposed to be the value
 		// removed from this[arg], but there wasn't one.
-		_o_return_unset;
+		_o_return_unset_item;
 	}
 	// Set return value to the removed item.
 	item->ReturnMove(aResultToken);
@@ -1912,7 +1910,6 @@ void Map::Delete(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *
 void Map::Clear(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType *aParam[], int aParamCount)
 {
 	Clear();
-	_o_return_empty;
 }
 
 
@@ -3064,7 +3061,7 @@ void Array::Invoke(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType
 			auto result = Object::Invoke(aResultToken, IT_GET, _T("Default"), ExprTokenType{this}, nullptr, 0);
 			if (result != INVOKE_NOT_HANDLED)
 				_o_return_retval;
-			_o_return_unset;
+			_o_return_unset_item;
 		}
 		item.ReturnRef(aResultToken);
 		_o_return_retval;
@@ -3101,7 +3098,7 @@ void Array::Invoke(ResultToken &aResultToken, int aID, int aFlags, ExprTokenType
 			index = mLength;
 		if (!InsertAt(index, aParam, aParamCount))
 			_o_throw_oom;
-		_o_return_empty;
+		_o_return_unset_blank;
 	}
 
 	case M_RemoveAt:
@@ -4564,7 +4561,7 @@ BIF_DECL(Class_CallNestedClass)
 		aResultToken.InitResult(aResultToken.buf);
 	}
 	else
-		aResultToken.symbol = SYM_STRING; // Set the default expected by Invoke.
+		aResultToken.InitInvokeRetVal();
 	cls->Invoke(aResultToken, IT_CALL, nullptr, ExprTokenType { cls }, aParam + 1, aParamCount - 1);
 }
 

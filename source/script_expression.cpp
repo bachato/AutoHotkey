@@ -394,7 +394,7 @@ LPTSTR Line::ExpandExpression(int aArgIndex, ResultType &aResult, ResultToken *a
 					goto abort_if_result;
 				}
 				// For something like (a.b?) or (a.b ?? c), INVOKE_NOT_HANDLED is treated as unset.
-				result_token.symbol = SYM_MISSING;
+				result_token.Unset();
 			}
 
 			g_script.mCurrLine = this; // For error-reporting.
@@ -421,9 +421,29 @@ LPTSTR Line::ExpandExpression(int aArgIndex, ResultType &aResult, ResultToken *a
 			{
 				if (result_token.symbol == SYM_MISSING && !(flags & EIF_UNSET_RETURN))
 				{
-					result_token.Error(_T("No value was returned.")
-						, this_token.error_reporting_marker
-						, (flags & IT_BITMASK) == IT_GET && !member ? ErrorPrototype::UnsetItem : ErrorPrototype::Unset);
+					Object *err;
+					LPCTSTR msg;
+					if (result_token.unset_kind == UnsetKind::Unspecified)
+						result_token.unset_kind = (flags & IT_BITMASK) == IT_GET && !member ? UnsetKind::UnsetItem : UnsetKind::Unset;
+					switch (result_token.unset_kind)
+					{
+					case UnsetKind::Blank:
+						if (g_script.BackCompatMode())
+						{
+							this_token.SetValue(_T(""), 0);
+							goto push_this_token;
+						}
+						// Fall through:
+					default:
+						err = ErrorPrototype::Unset;
+						msg = _T("No value was returned.");
+						break;
+					case UnsetKind::UnsetItem:
+						err = ErrorPrototype::UnsetItem;
+						msg = ERR_ITEM_UNSET;
+						break;
+					}
+					result_token.Error(msg, this_token.error_reporting_marker, err);
 					aResult = result_token.Result(); // FAIL to abort, OK if user or OnError requested continuation.
 					goto abort_if_result;
 				}
@@ -1517,10 +1537,7 @@ push_this_token:
 			aTarget[result_length] = '\0'; // Guarantee null-termination so it doesn't have to be done at an earlier stage.
 		}
 		if (aResultToken)
-		{
-			aResultToken->marker = aTarget;
-			aResultToken->marker_length = result_length;
-		}
+			aResultToken->SetValue(aTarget, result_length);
 		aTarget += result_size;
 		goto normal_end_skip_output_var; // output_var was already checked higher above, so no need to consider it again.
 
@@ -1540,7 +1557,7 @@ abort_if_result:
 	if (aResult != FAIL)
 	{
 		if (aResultToken)
-			aResultToken->symbol = SYM_MISSING;
+			aResultToken->Unset();
 		goto normal_end_skip_output_var;
 	}
 	// FALL THROUGH:

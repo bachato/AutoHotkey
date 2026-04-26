@@ -1277,7 +1277,7 @@ void VarBkp::ToToken(ExprTokenType &aValue)
 	case VAR_ATTRIB_IS_DOUBLE: aValue.SetValue(mContentsDouble); break;
 	default:
 		if (mAttrib & VAR_ATTRIB_UNINITIALIZED)
-			aValue.symbol = SYM_MISSING;
+			aValue.Unset();
 		else
 			aValue.SetValue(mCharContents, mByteLength / sizeof(TCHAR));
 	}
