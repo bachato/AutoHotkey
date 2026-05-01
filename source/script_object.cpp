@@ -1508,11 +1508,19 @@ Object *Object::ClassGetPrototypeBackwardCompatible()
 
 bool Object::CanSetBase()
 {
-	// false if StructInfo was already initialized from the current Base.
-	// false if this is an instance with typed properties.
-	if (mFlags & (StructInfoInitialized | DataIsSuffix | DataIsSuffixPtr))
+	switch (mFlags & (StructInfoInitialized | StructInfoLocked | DataIsSuffix | DataIsSuffixPtr))
+	{
+	case 0:
+		return true;
+	case StructInfoInitialized | StructInfoLocked:
+		// Prototypes with no typed properties allow Base assignment for backward-compatibility.
+		// Since it's locked, size == 0 is only possible if an instance was created or this is a
+		// built-in Prototype which has been locked for whatever reason.
+		return ((StructInfo*)(this + 1))->size == 0;
+	case StructInfoInitialized: // StructInfo was already initialized from the current Base (and since it's not locked, size != 0 is implied).
+	default: // this is an instance with typed properties.
 		return false;
-	return true;
+	}
 }
 
 
