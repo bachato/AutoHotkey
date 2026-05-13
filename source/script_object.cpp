@@ -650,7 +650,7 @@ Object::~Object()
 		if (si.array_class_map)
 			si.array_class_map->Release();
 	}
-	else if (mFlags & (DataIsSuffix | DataIsSuffixPtr))
+	else if (mFlags & (DataIsSuffix | DataIsSuffixPtr | ObjectIsClass))
 	{
 		// Call native destructor for each nested object and release any pointer held for a Ptr field.
 		auto si = mBase->GetStructInfo();
@@ -1564,7 +1564,7 @@ LPTSTR Object::Type()
 
 Object *Object::CreateClass(Object *aPrototype, Object *aBase)
 {
-	auto cls = new (sizeof(Object*)) Object(ObjectIsClass | DataIsSuffix);
+	auto cls = new (sizeof(Object*)) Object(ObjectIsClass);
 	cls->SetBase(aBase);
 	if (!sStructPrototype || !aPrototype->IsDerivedFrom(sStructPrototype))
 		cls->SetOwnProp(_T("Prototype"), aPrototype);
