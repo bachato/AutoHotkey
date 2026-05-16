@@ -4478,9 +4478,8 @@ ResultType Script::ParseAndAddLine(LPTSTR aLineText, ActionTypeType aActionType)
 				for (;;) // L35: Loop to fix x.y.z() and similar.
 				{
 					id_end = find_identifier_end(id_begin);
-					if (  id_end == id_begin // No identifier.
-						&& *id_end != g_DerefChar // It's not a.%b%
-						&& !(id_begin[-2] == '?' && (*id_end == '(' || *id_end == '['))  ) // It's not a?.() or a?.[b]
+					if (id_end == id_begin // No identifier.
+						&& *id_end != g_DerefChar) // It's not a.%b%
 						break; // Invalid.
 					if (*id_end == '(' // Allow function/method Call as standalone expression.
 						|| *id_end == g_DerefChar) // Allow dynamic property/method access (too hard to validate what's to the right of %).
@@ -8563,27 +8562,7 @@ ResultType Line::ExpressionToPostfix(ArgStruct &aArg, ExprTokenType *&aInfix)
 					}
 					bool maybe;
 					op_end = omit_leading_whitespace(cp + 1);
-					if (*op_end == '.' && (op_end[1] == '(' || op_end[1] == '[')) // fun?.() or arr?.[i]
-					{
-						// Prohibit x.y?.(z) for now since it's probably ideal to have it short-circuit over (z)
-						// if the method doesn't exist, and call with `this == x` (like JavaScript in both cases).
-						// This can only work with objects which allow checking for the presence of the method.
-						// To implement it that way we would need special handling, perhaps like:
-						//  1. x
-						//     stack: [x]
-						//  2. FUNC {member: 'y', flags: EIF_MAYBE_GET_METHOD}
-						//     stack: [x.GetMethod('y'), x] or [unset]
-						//  3. MAYBE
-						//     goto 6 if unset
-						//  4. z
-						//     stack: [x.y, x, z]
-						//  5. FUNC {flags: IT_CALL}  ; calls (x.y)(x, z)
-						if (op_end[1] == '(' && infix_count && infix[infix_count-1].symbol == SYM_DOT)
-							return LineError(_T("Optional method calls are not supported."), FAIL, cp);
-						maybe = true;
-						cp = op_end; // The loop will skip over '.' itself.
-					}
-					else if (*op_end == '.' && (IS_IDENTIFIER_CHAR(op_end[1]) || op_end[1] == g_DerefChar)) // x?.y or x?.123 or x?.%y%
+					if (*op_end == '.' && (IS_IDENTIFIER_CHAR(op_end[1]) || op_end[1] == g_DerefChar)) // x?.y or x?.123 or x?.%y%
 					{
 						// Do some extra checks to allow an optional chain enclosed in parentheses to use numeric
 						// property names without breaking expressions like a?.123:b, for backward-compatibility.
@@ -9390,7 +9369,7 @@ unquoted_literal:
 								this_infix[-1].callsite->flags |= EIF_UNSET_RETURN | EIF_UNSET_PROP;
 								applied = true;
 							}
-							else if ((sym_prev == SYM_CPAREN || sym_prev == SYM_CBRACKET) && this_infix[-1].callsite) // x()?, x[]?, x.y[z]?, x?.[]?
+							else if ((sym_prev == SYM_CPAREN || sym_prev == SYM_CBRACKET) && this_infix[-1].callsite) // x()?, x[]?, x.y[z]?
 							{
 								this_infix[-1].callsite->flags |= EIF_UNSET_RETURN;
 								applied = true;
