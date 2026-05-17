@@ -6511,11 +6511,8 @@ ResultType Script::DefineClassVars(LPTSTR aBuf, bool aStatic)
 					//    the current point in the script.
 					auto type_end_char = *type_name_end;
 					*type_name_end = '\0';
-					TCHAR qu[2] { 0 };
-					if (TypeCode(type_name) != MdType::Void)
-						qu[0] = '\'';
-					_sntprintf(type_buf, _countof(type_buf), _T("DefineProp(this.Prototype,'%s',{Type:%s%s%s,Pack:%i})")
-						, item, qu, type_name, qu, mClassStructPack[mClassObjectCount]);
+					_sntprintf(type_buf, _countof(type_buf), _T("DefineProp(this.Prototype,'%s',{Type:%s,Pack:%i})")
+						, item, type_name, mClassStructPack[mClassObjectCount]);
 					if (!DefineClassVarInit(type_buf, true, class_object, ACT_EXPRESSION))
 						return FAIL;
 					*type_name_end = type_end_char;

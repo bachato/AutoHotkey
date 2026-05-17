@@ -2140,9 +2140,10 @@ TypedProperty *Object::DefineTypedProperty(name_t aName)
 	return tprop;
 }
 
-FResult Object::DefineTypedProperty(name_t aName, MdType aType, Object *aClass, size_t aCount, size_t aPack, size_t aOffset)
+FResult Object::DefineTypedProperty(name_t aName, Object *aClass, size_t aCount, size_t aPack, size_t aOffset)
 {
 	size_t psize = 0, palign = 0;
+	MdType native_type = MdType::Void;
 	StructInfo *psi = nullptr;
 	if (aClass)
 	{
@@ -2153,7 +2154,7 @@ FResult Object::DefineTypedProperty(name_t aName, MdType aType, Object *aClass, 
 			if (psi->native_type != MdType::Void && !psi->item_count)
 			{
 				aClass = nullptr;
-				aType = psi->native_type;
+				native_type = psi->native_type;
 			}
 			psize = psi->size;
 			palign = psi->align;
@@ -2161,14 +2162,9 @@ FResult Object::DefineTypedProperty(name_t aName, MdType aType, Object *aClass, 
 	}
 	else if (aCount)
 	{
-		if (aType == MdType::Void)
-		{
-			psize = aCount;
-			palign = aPack ? aPack : 1;
-		}
+		psize = aCount;
+		palign = aPack ? aPack : 1;
 	}
-	else
-		palign = psize = TypeSize(aType);
 	if (!psize)
 		return FR_E_ARGS;
 	auto si = (mFlags & (StructInfoLocked | ClassPrototype)) != ClassPrototype ? nullptr
@@ -2178,7 +2174,7 @@ FResult Object::DefineTypedProperty(name_t aName, MdType aType, Object *aClass, 
 	auto tprop = DefineTypedProperty(aName);
 	if (!tprop)
 		return FR_E_OUTOFMEM;
-	tprop->type = aType;
+	tprop->type = native_type;
 	tprop->pointed_proto = nullptr;
 	if (tprop->class_object = aClass)
 	{
@@ -2337,8 +2333,7 @@ void Object::DefineProp(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 	if (desc && desc->GetOwnProp(value, _T("Type"))) // TODO: make this properly mutually exclusive with the others
 	{
 		Object *pclass = dynamic_cast<Object*>(TokenToObject(value));
-		MdType ptype = pclass ? MdType::Void : TypeCode(TokenToString(value));
-		size_t pcount = (ptype == MdType::Void) ? (size_t)TokenToInt64(value) : 0;
+		size_t pcount = pclass ? 0 : (size_t)TokenToInt64(value);
 		size_t pack = desc->GetOwnProp(value, _T("Pack")) ? (size_t)TokenToInt64(value) : 0;
 		size_t offset = -1;
 		if (desc->GetOwnProp(value, _T("Offset")))
@@ -2356,7 +2351,7 @@ void Object::DefineProp(ResultToken &aResultToken, int aID, int aFlags, ExprToke
 			if (offset == -1)
 				_o_throw_value(aID ? ERR_PARAM3_INVALID : ERR_PARAM2_INVALID);
 		}
-		switch (DefineTypedProperty(name, ptype, pclass, pcount, pack, offset))
+		switch (DefineTypedProperty(name, pclass, pcount, pack, offset))
 		{
 		case OK:
 			AddRef();

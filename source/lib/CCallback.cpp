@@ -405,34 +405,30 @@ bif_impl FResult CallbackCreate(IObject *func, optl<StrArg> aOptions, ExprTokenT
 		for (UINT i = 0; i < param_types->Length(); ++i)
 		{
 			param_types->ItemToToken(i, v);
-			auto typestring = TokenToString(v);
-			at[i].type = TypeCode(typestring);
+			at[i].type = MdType::Void;
 			at[i].proto = nullptr;
-			if (at[i].type == MdType::Void)
+			if (v.symbol == SYM_OBJECT && v.object->IsOfType(Object::sPrototype))
 			{
-				if (v.symbol == SYM_OBJECT && v.object->IsOfType(Object::sPrototype))
+				auto cls = (Object*)v.object;
+				auto proto = cls->ClassGetPrototype();
+				if (proto && proto->IsDerivedFrom(Object::sStructPrototype))
 				{
-					auto cls = (Object*)v.object;
-					auto proto = cls->ClassGetPrototype();
-					if (proto && proto->IsDerivedFrom(Object::sStructPrototype))
+					at[i].type = proto->GetStructMdType();
+					if (at[i].type == MdType::Void)
 					{
-						at[i].type = proto->GetStructMdType();
-						if (at[i].type == MdType::Void)
-						{
-							at[i].type = MdType::Struct;
-							at[i].proto = (Object*)proto;
-						}
-						continue;
+						at[i].type = MdType::Struct;
+						at[i].proto = (Object*)proto;
 					}
+					continue;
 				}
-				else if (!_tcsicmp(typestring, _T("Void")))
-				{
-					if (i + 1 == param_types->Length())
-						continue;
-				}
-				GlobalFree((HGLOBAL)callbackfunc);
-				return FR_E_ARG(2);
 			}
+			else if (v.symbol == SYM_STRING && !_tcsicmp(v.marker, _T("Void")))
+			{
+				if (i + 1 == param_types->Length())
+					continue;
+			}
+			GlobalFree((HGLOBAL)callbackfunc);
+			return FR_E_ARG(2);
 		}
 		for (UINT i = 0; i < param_types->Length(); ++i)
 			if (at[i].proto)
